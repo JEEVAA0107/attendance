@@ -13,10 +13,10 @@ const StudentAnalytics = () => {
   const { studentId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [rangeType, setRangeType] = useState<'day' | 'week' | 'month'>('month');
+  const [rangeType, setRangeType] = useState<'day' | 'week' | 'month'>('day');
   const [rangeValue, setRangeValue] = useState(() => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return now.toISOString().split('T')[0]; // Default to today's date
   });
   const [studentData, setStudentData] = useState<any>(null);
   const [dailyData, setDailyData] = useState<any[]>([]);
@@ -27,22 +27,33 @@ const StudentAnalytics = () => {
     if (type === 'day') {
       return { start: value, end: value };
     } else if (type === 'week') {
-      const [year, week] = value.split('-W');
-      const startDate = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-      return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0]
-      };
+      if (value.includes('-W')) {
+        const [year, week] = value.split('-W');
+        const jan1 = new Date(parseInt(year), 0, 1);
+        const startDate = new Date(jan1.getTime() + (parseInt(week) - 1) * 7 * 24 * 60 * 60 * 1000);
+        const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+        return {
+          start: startDate.toISOString().split('T')[0],
+          end: endDate.toISOString().split('T')[0]
+        };
+      } else {
+        return { start: value, end: value };
+      }
     } else {
-      const [year, month] = value.split('-');
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const endDate = new Date(parseInt(year), parseInt(month), 0);
-      return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0]
-      };
+      // For month type, if value is in YYYY-MM-DD format, extract month
+      if (value.includes('-') && value.split('-').length === 3) {
+        const date = new Date(value);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        return {
+          start: startDate.toISOString().split('T')[0],
+          end: endDate.toISOString().split('T')[0]
+        };
+      } else {
+        return { start: value, end: value };
+      }
     }
   };
 
@@ -53,7 +64,7 @@ const StudentAnalytics = () => {
     try {
       // Get student info
       const student = await db.select().from(studentsTable)
-        .where(and(eq(studentsTable.id, studentId), eq(studentsTable.userId, user.uid)))
+        .where(and(eq(studentsTable.id, parseInt(studentId)), eq(studentsTable.userId, user.uid)))
         .limit(1);
       
       if (student.length === 0) {
@@ -66,7 +77,7 @@ const StudentAnalytics = () => {
       // Get attendance records for the period
       const records = await db.select().from(attendanceRecords)
         .where(and(
-          eq(attendanceRecords.studentId, studentId),
+          eq(attendanceRecords.studentId, parseInt(studentId)),
           eq(attendanceRecords.userId, user.uid),
           gte(attendanceRecords.attendanceDate, start),
           lte(attendanceRecords.attendanceDate, end)
@@ -105,7 +116,7 @@ const StudentAnalytics = () => {
       
       setStudentData({
         name: student[0].name,
-        rollNo: student[0].rollNo,
+        rollNo: student[0].rollNumber,
         attendancePercentage,
         totalSessions,
         attendedSessions,
@@ -178,7 +189,20 @@ const StudentAnalytics = () => {
                   key={type}
                   variant={rangeType === type ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setRangeType(type)}
+                  onClick={() => {
+                    setRangeType(type);
+                    // Set appropriate default value for each type
+                    const now = new Date();
+                    if (type === 'day') {
+                      setRangeValue(now.toISOString().split('T')[0]);
+                    } else if (type === 'week') {
+                      const year = now.getFullYear();
+                      const week = Math.ceil(((now.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + new Date(year, 0, 1).getDay() + 1) / 7);
+                      setRangeValue(`${year}-W${week.toString().padStart(2, '0')}`);
+                    } else {
+                      setRangeValue(now.toISOString().split('T')[0]);
+                    }
+                  }}
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </Button>
@@ -189,7 +213,17 @@ const StudentAnalytics = () => {
               <input
                 type={rangeType === 'day' ? 'date' : rangeType === 'week' ? 'week' : 'month'}
                 value={rangeValue}
-                onChange={(e) => setRangeValue(e.target.value)}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  if (rangeType === 'month' && newValue) {
+                    // Convert YYYY-MM to first day of month
+                    const [year, month] = newValue.split('-');
+                    const firstDay = new Date(parseInt(year), parseInt(month) - 1, 1);
+                    setRangeValue(firstDay.toISOString().split('T')[0]);
+                  } else {
+                    setRangeValue(newValue);
+                  }
+                }}
                 className="px-3 py-1 border rounded text-sm"
               />
             </div>

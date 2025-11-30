@@ -1,11 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun, LogOut, LayoutDashboard } from 'lucide-react';
+import { Moon, Sun, LogOut, LayoutDashboard, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const Header = () => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -18,8 +18,11 @@ const Header = () => {
   const navLinks = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/students', label: 'Students' },
+    { path: '/subjects', label: 'Subjects' },
+    { path: '/faculty', label: 'Faculty' },
     { path: '/attendance', label: 'Attendance' },
     { path: '/analytics', label: 'Analytics' },
+    { path: '/hod-workspace', label: 'HoD Workspace', icon: Shield },
     { path: '/export', label: 'Data Export' },
     { path: '/settings', label: 'Settings' },
   ];
@@ -37,15 +40,14 @@ const Header = () => {
         </Link>
 
         <div className="hidden md:flex items-center space-x-1">
-          {navLinks.map((link) => (
+          {navLinks.filter(link => link.label !== 'HoD Workspace' || user?.role === 'hod').map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                isActive(link.path)
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isActive(link.path)
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
             >
               {link.label}
             </Link>

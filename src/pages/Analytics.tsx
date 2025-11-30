@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
@@ -21,16 +21,17 @@ const Analytics = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showStudentsList, setShowStudentsList] = useState(false);
   const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
       if (!user) return;
       
       try {
         // Get total students and remove duplicates by roll number
         const studentsData = await db.select().from(studentsTable).where(eq(studentsTable.userId, user.uid));
         const uniqueStudents = studentsData.filter((student, index, self) => 
-          index === self.findIndex(s => s.rollNo.toLowerCase() === student.rollNo.toLowerCase())
+          index === self.findIndex(s => (s.rollNumber || '').toLowerCase() === (student.rollNumber || '').toLowerCase())
         );
         setAllStudents(uniqueStudents);
         setTotalStudents(uniqueStudents.length);
@@ -77,18 +78,41 @@ const Analytics = () => {
         const avgPercent = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
         setAvgAttendance(avgPercent);
         
-        // Get department-wise data using unique students
+        // Get department-wise data with real attendance calculation
         const deptStats = uniqueStudents.reduce((acc: any, student) => {
           const dept = student.department || 'Other';
-          if (!acc[dept]) acc[dept] = { total: 0, present: 0 };
+          if (!acc[dept]) acc[dept] = { total: 0, present: 0, students: [] };
           acc[dept].total++;
+          acc[dept].students.push(student.id);
           return acc;
         }, {});
         
-        const deptData = Object.entries(deptStats).map(([name, stats]: [string, any]) => ({
-          name,
-          attendance: Math.round(Math.random() * 20 + 80) // Placeholder calculation
-        }));
+        // Calculate real attendance for each department
+        const deptData = await Promise.all(
+          Object.entries(deptStats).map(async ([name, stats]: [string, any]) => {
+            const deptAttendance = await db.select().from(attendanceRecords)
+              .where(and(
+                eq(attendanceRecords.userId, user.uid),
+                gte(attendanceRecords.attendanceDate, last7Days[0])
+              ));
+            
+            const deptStudentRecords = deptAttendance.filter(record => 
+              stats.students.includes(record.studentId)
+            );
+            
+            let totalPresent = 0;
+            let totalPossible = deptStudentRecords.length * 7; // 7 periods per day
+            
+            deptStudentRecords.forEach(record => {
+              const periods = [record.period1, record.period2, record.period3, record.period4, record.period5, record.period6, record.period7];
+              totalPresent += periods.filter(p => p).length;
+            });
+            
+            const attendance = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
+            
+            return { name, attendance, total: stats.total };
+          })
+        );
         
         setDepartmentData(deptData);
         
@@ -97,10 +121,23 @@ const Analytics = () => {
       } finally {
         setIsLoading(false);
       }
-    };
-    
-    loadAnalytics();
   }, [user]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      loadAnalytics();
+      setLastUpdated(new Date());
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, loadAnalytics]);
   
   // Monthly trend data (placeholder for now)
   const monthlyTrend = [
@@ -148,32 +185,58 @@ const Analytics = () => {
         <div>
           <h1 className="text-4xl font-heading font-bold gradient-text">Analytics</h1>
           <p className="text-muted-foreground mt-2">Real-time insights and attendance trends</p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className="text-xs text-muted-foreground">
+              {autoRefresh ? 'Live' : 'Paused'} • Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+            <button 
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className="text-xs text-primary hover:underline ml-2"
+            >
+              {autoRefresh ? 'Pause' : 'Resume'}
+            </button>
+          </div>
         </div>
-        <Button 
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const analyticsData = [
-              { Metric: 'Total Students', Value: totalStudents },
-              { Metric: 'Average Attendance', Value: `${avgAttendance}%` },
-              { Metric: 'Classes Today', Value: 7 },
-              { Metric: 'Active Days', Value: weeklyData.filter(d => d.present > 0).length },
-              ...weeklyData.map(day => ({ Metric: `${day.day} Present`, Value: day.present })),
-              ...weeklyData.map(day => ({ Metric: `${day.day} Absent`, Value: day.absent })),
-              ...departmentData.map(dept => ({ Metric: `${dept.name} Attendance`, Value: `${dept.attendance}%` }))
-            ];
-            
-            const worksheet = XLSX.utils.json_to_sheet(analyticsData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Analytics');
-            XLSX.writeFile(workbook, `Analytics_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-            toast.success('Analytics report exported to Excel');
-          }}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">Export Report</span>
-          <span className="sm:hidden">Export</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              loadAnalytics();
+              setLastUpdated(new Date());
+              toast.success('Analytics refreshed');
+            }}
+          >
+            <TrendingUp className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const analyticsData = [
+                { Metric: 'Total Students', Value: totalStudents },
+                { Metric: 'Average Attendance', Value: `${avgAttendance}%` },
+                { Metric: 'Classes Today', Value: 7 },
+                { Metric: 'Active Days', Value: weeklyData.filter(d => d.present > 0).length },
+                ...weeklyData.map(day => ({ Metric: `${day.day} Present`, Value: day.present })),
+                ...weeklyData.map(day => ({ Metric: `${day.day} Absent`, Value: day.absent })),
+                ...departmentData.map(dept => ({ Metric: `${dept.name} Attendance`, Value: `${dept.attendance}%` }))
+              ];
+              
+              const worksheet = XLSX.utils.json_to_sheet(analyticsData);
+              const workbook = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(workbook, worksheet, 'Analytics');
+              XLSX.writeFile(workbook, `Analytics_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+              toast.success('Analytics report exported to Excel');
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Export Report</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -219,7 +282,7 @@ const Analytics = () => {
                         {student.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {student.rollNo} • {student.department || 'N/A'}
+                        {student.rollNumber} • {student.department || 'N/A'}
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground">

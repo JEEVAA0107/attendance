@@ -10,10 +10,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-db": "node database/run.js",
+    "setup-biometric": "node setup-biometric-system.js",
     "db:generate": "drizzle-kit generate:pg",
     "db:push": "drizzle-kit push:pg",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "seed-users": "node -e \"require('./src/lib/biometricAuth.js').BiometricAuthService.seedMockUsers()\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
