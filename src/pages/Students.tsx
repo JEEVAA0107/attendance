@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Student {
   id: string;
   name: string;
-  rollNo: string;
+  rollNumber: string;
   regNo: string;
   email: string;
   phone: string;
@@ -36,7 +36,7 @@ const Students = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [formData, setFormData] = useState({ name: '', rollNo: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '2022' });
+  const [formData, setFormData] = useState({ name: '', rollNumber: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '2022' });
   const [uploadedStudents, setUploadedStudents] = useState<Student[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [selectedBatch, setSelectedBatch] = useState('2022');
@@ -46,7 +46,7 @@ const Students = () => {
       if (!user) return;
       try {
         const loadedStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-        setStudentsList(loadedStudents.sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true })));
+        setStudentsList(loadedStudents.sort((a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true })));
       } catch (error) {
         console.error('Error loading students:', error);
         toast.error('Failed to load students');
@@ -61,54 +61,44 @@ const Students = () => {
     .filter(student => student.batch === selectedBatch)
     .filter(student =>
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
+      (student.rollNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
       // Custom sorting: LA comes before UA
-      const aIsLA = a.rollNo.includes('LA');
-      const bIsLA = b.rollNo.includes('LA');
-      const aIsUA = a.rollNo.includes('UA');
-      const bIsUA = b.rollNo.includes('UA');
+      const aRoll = a.rollNumber || '';
+      const bRoll = b.rollNumber || '';
+      const aIsLA = aRoll.includes('LA');
+      const bIsLA = bRoll.includes('LA');
+      const aIsUA = aRoll.includes('UA');
+      const bIsUA = bRoll.includes('UA');
       
       if (aIsUA && bIsLA) return -1; // UA before LA
       if (aIsLA && bIsUA) return 1;  // LA after UA
       
       // Normal sorting within same type
       if (sortOrder === 'asc') {
-        return a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true });
+        return aRoll.localeCompare(bRoll, undefined, { numeric: true });
       } else {
-        return b.rollNo.localeCompare(a.rollNo, undefined, { numeric: true });
+        return bRoll.localeCompare(aRoll, undefined, { numeric: true });
       }
     });
 
   const handleAddStudent = async () => {
-    if (!formData.name || !formData.rollNo || !formData.email || !user) {
+    if (!formData.name || !formData.rollNumber || !formData.email || !user) {
       toast.error('Please fill all required fields');
       return;
     }
     
     try {
-      // Check for duplicate roll number
-      const existingStudent = await db.select().from(students)
-        .where(and(
-          eq(students.userId, user.uid),
-          eq(students.rollNo, formData.rollNo)
-        ));
-      
-      if (existingStudent.length > 0) {
-        toast.error('Student with this roll number already exists');
-        return;
-      }
-      
       await db.insert(students).values({
         userId: user.uid,
         ...formData
       });
       
       const loadedStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-      setStudentsList(loadedStudents.sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true })));
+      setStudentsList(loadedStudents.sort((a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true })));
       
-      setFormData({ name: '', rollNo: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '2022' });
+      setFormData({ name: '', rollNumber: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '2022' });
       setIsAddDialogOpen(false);
       toast.success('Student added successfully');
     } catch (error) {
@@ -124,7 +114,7 @@ const Students = () => {
     
     if (/^[+]?[0-9]{10,15}$/.test(trimmed.replace(/[\s()-]/g, ''))) return 'phone';
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'email';
-    if (/^[0-9]{2,4}[A-Z]{2,4}[0-9]{3,4}$/i.test(trimmed)) return 'rollNo';
+    if (/^[0-9]{2,4}[A-Z]{2,4}[0-9]{3,4}$/i.test(trimmed)) return 'rollNumber';
     if (/^[0-9]{8,12}$/.test(trimmed)) return 'regNo';
     if (/^(CSE|ECE|EEE|MECH|CIVIL|IT|AI|DS|2021|2022|2023|2024)$/i.test(trimmed)) return 'department';
     if (/^[A-Za-z\s.]+$/.test(trimmed) && trimmed.length > 2) return 'name';
@@ -136,7 +126,7 @@ const Students = () => {
     const student: Student = {
       id: `upload-${Date.now()}-${Math.random()}`,
       name: '',
-      rollNo: '',
+      rollNumber: '',
       regNo: '',
       email: '',
       phone: '',
@@ -157,8 +147,8 @@ const Students = () => {
         case 'name':
           if (!student.name) student.name = cellValue.toUpperCase();
           break;
-        case 'rollNo':
-          if (!student.rollNo) student.rollNo = cellValue.toUpperCase();
+        case 'rollNumber':
+          if (!student.rollNumber) student.rollNumber = cellValue.toUpperCase();
           break;
         case 'regNo':
           if (!student.regNo) student.regNo = cellValue;
@@ -224,7 +214,7 @@ const Students = () => {
           
           const student = normalizeStudentData(row);
           
-          if (student.name || student.rollNo) {
+          if (student.name || student.rollNumber) {
             parsedStudents.push(student);
           }
         });
@@ -252,24 +242,10 @@ const Students = () => {
     }
     
     try {
-      // Check for existing students by roll number
-      const existingStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-      const existingRollNos = new Set(existingStudents.map(s => s.rollNo.toLowerCase()));
-      
-      // Filter out duplicates
-      const newStudents = uploadedStudents.filter(student => 
-        !existingRollNos.has(student.rollNo.toLowerCase())
-      );
-      
-      if (newStudents.length === 0) {
-        toast.error('All students already exist in database');
-        return;
-      }
-      
-      const studentsToInsert = newStudents.map(student => ({
+      const studentsToInsert = uploadedStudents.map(student => ({
         userId: user.uid,
         name: student.name,
-        rollNo: student.rollNo,
+        rollNumber: student.rollNumber,
         regNo: student.regNo,
         email: student.email,
         phone: student.phone,
@@ -281,17 +257,12 @@ const Students = () => {
       await db.insert(students).values(studentsToInsert);
       
       const loadedStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-      setStudentsList(loadedStudents.sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true })));
+      setStudentsList(loadedStudents.sort((a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true })));
       
       setUploadedStudents([]);
       setIsUploadDialogOpen(false);
       
-      const duplicateCount = uploadedStudents.length - newStudents.length;
-      if (duplicateCount > 0) {
-        toast.success(`${newStudents.length} new students added, ${duplicateCount} duplicates skipped`);
-      } else {
-        toast.success(`${newStudents.length} students added to database`);
-      }
+      toast.success(`${uploadedStudents.length} students added to database`);
     } catch (error) {
       console.error('Error uploading students:', error);
       toast.error('Failed to upload students');
@@ -312,10 +283,10 @@ const Students = () => {
         .where(eq(students.id, editingStudent.id));
       
       const loadedStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-      setStudentsList(loadedStudents.sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true })));
+      setStudentsList(loadedStudents.sort((a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true })));
       
       setEditingStudent(null);
-      setFormData({ name: '', rollNo: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '' });
+      setFormData({ name: '', rollNumber: '', regNo: '', email: '', phone: '', parentPhone: '', department: '', batch: '' });
       toast.success('Student updated successfully');
     } catch (error) {
       console.error('Error updating student:', error);
@@ -330,7 +301,7 @@ const Students = () => {
       await db.delete(students).where(eq(students.id, studentId));
       
       const loadedStudents = await db.select().from(students).where(eq(students.userId, user.uid));
-      setStudentsList(loadedStudents.sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true })));
+      setStudentsList(loadedStudents.sort((a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true })));
       
       toast.success('Student deleted successfully');
     } catch (error) {
@@ -343,7 +314,7 @@ const Students = () => {
     setEditingStudent(student);
     setFormData({
       name: student.name,
-      rollNo: student.rollNo,
+      rollNumber: student.rollNumber,
       regNo: student.regNo || '',
       email: student.email || '',
       phone: student.phone || '',
@@ -370,7 +341,7 @@ const Students = () => {
               onClick={() => {
                 const worksheet = XLSX.utils.json_to_sheet(filteredStudents.map(student => ({
                   Name: student.name,
-                  'Roll No': student.rollNo,
+                  'Roll No': student.rollNumber,
                   'Reg No': student.regNo,
                   Email: student.email,
                   Phone: student.phone,
@@ -466,7 +437,7 @@ const Students = () => {
                             {uploadedStudents.map((student) => (
                               <TableRow key={student.id}>
                                 <TableCell className="font-medium text-primary">{student.name || '-'}</TableCell>
-                                <TableCell className="font-mono">{student.rollNo || '-'}</TableCell>
+                                <TableCell className="font-mono">{student.rollNumber || '-'}</TableCell>
                                 <TableCell className="font-mono">{student.regNo || '-'}</TableCell>
                                 <TableCell>{student.phone || '-'}</TableCell>
                                 <TableCell className="text-sm">{student.email || '-'}</TableCell>
@@ -515,11 +486,11 @@ const Students = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rollNo">Roll Number *</Label>
+                  <Label htmlFor="rollNumber">Roll Number *</Label>
                   <Input
-                    id="rollNo"
-                    value={formData.rollNo}
-                    onChange={(e) => setFormData({ ...formData, rollNo: e.target.value })}
+                    id="rollNumber"
+                    value={formData.rollNumber}
+                    onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
                     placeholder="Enter roll number"
                   />
                 </div>
@@ -686,7 +657,7 @@ const Students = () => {
                                 {uploadedStudents.map((student) => (
                                   <TableRow key={student.id}>
                                     <TableCell className="font-medium text-primary">{student.name || '-'}</TableCell>
-                                    <TableCell className="font-mono">{student.rollNo || '-'}</TableCell>
+                                    <TableCell className="font-mono">{student.rollNumber || '-'}</TableCell>
                                     <TableCell className="font-mono">{student.regNo || '-'}</TableCell>
                                     <TableCell>{student.phone || '-'}</TableCell>
                                     <TableCell className="text-sm">{student.email || '-'}</TableCell>
@@ -720,7 +691,7 @@ const Students = () => {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div className="space-y-1 flex-1">
                       <h3 className="font-bold text-lg sm:text-xl text-primary">{student.name}</h3>
-                      <p className="text-sm text-muted-foreground">Roll No: {student.rollNo}</p>
+                      <p className="text-sm text-muted-foreground">Roll No: {student.rollNumber}</p>
                       <p className="text-sm text-muted-foreground">Reg No: {student.regNo}</p>
                       <p className="text-sm text-muted-foreground">Phone: {student.phone}</p>
                     </div>
@@ -750,8 +721,8 @@ const Students = () => {
                             <div className="space-y-2">
                               <Label>Roll Number</Label>
                               <Input
-                                value={formData.rollNo}
-                                onChange={(e) => setFormData({ ...formData, rollNo: e.target.value })}
+                                value={formData.rollNumber}
+                                onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
                               />
                             </div>
                             <div className="space-y-2">
