@@ -184,42 +184,75 @@ const StudentMonitoring: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="consecutive">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Consecutive Absence Tracking</CardTitle>
-                            <CardDescription>Students absent for 3 or more consecutive days</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {filteredAlerts
-                                    .filter(a => a.type === 'consecutive_absence')
-                                    .map((student) => (
-                                        <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                                            <div className="flex items-center gap-4">
-                                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                                    <UserX className="h-6 w-6 text-orange-600" />
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Absent Students - Year Wise</CardTitle>
+                                <CardDescription>Students absent today by academic year</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                                        <div className="text-3xl font-bold text-red-600 mb-2">12</div>
+                                        <div className="text-sm text-gray-600">1st Year Absent</div>
+                                        <div className="text-xs text-gray-500 mt-1">out of 60 students</div>
+                                    </div>
+                                    <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                        <div className="text-3xl font-bold text-orange-600 mb-2">8</div>
+                                        <div className="text-sm text-gray-600">2nd Year Absent</div>
+                                        <div className="text-xs text-gray-500 mt-1">out of 58 students</div>
+                                    </div>
+                                    <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                        <div className="text-3xl font-bold text-yellow-600 mb-2">6</div>
+                                        <div className="text-sm text-gray-600">3rd Year Absent</div>
+                                        <div className="text-xs text-gray-500 mt-1">out of 55 students</div>
+                                    </div>
+                                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div className="text-3xl font-bold text-purple-600 mb-2">4</div>
+                                        <div className="text-sm text-gray-600">4th Year Absent</div>
+                                        <div className="text-xs text-gray-500 mt-1">out of 52 students</div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Consecutive Absence Tracking</CardTitle>
+                                <CardDescription>Students absent for 3 or more consecutive days</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {filteredAlerts
+                                        .filter(a => a.type === 'consecutive_absence')
+                                        .map((student) => (
+                                            <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                                        <UserX className="h-6 w-6 text-orange-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900">{student.name}</h4>
+                                                        <p className="text-sm text-gray-600">{student.rollNumber} • {student.subject}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900">{student.name}</h4>
-                                                    <p className="text-sm text-gray-600">{student.rollNumber} • {student.subject}</p>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-medium text-orange-800">
+                                                        Absent since {student.lastAttended}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {student.daysAbsent} days total
+                                                    </p>
                                                 </div>
+                                                <Button size="sm" variant="destructive">
+                                                    Notify Parent
+                                                </Button>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-medium text-orange-800">
-                                                    Absent since {student.lastAttended}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    {student.daysAbsent} days total
-                                                </p>
-                                            </div>
-                                            <Button size="sm" variant="destructive">
-                                                Notify Parent
-                                            </Button>
-                                        </div>
-                                    ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                        ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>

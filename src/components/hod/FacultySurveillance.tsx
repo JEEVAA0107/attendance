@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,8 @@ import {
   XCircle,
   BarChart3,
   Activity,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
@@ -48,65 +50,40 @@ interface AttendancePattern {
 }
 
 const FacultySurveillance: React.FC = () => {
+  const navigate = useNavigate();
   const [facultyMembers, setFacultyMembers] = useState<FacultyMember[]>([]);
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   const [attendancePatterns, setAttendancePatterns] = useState<AttendancePattern[]>([]);
   const [surveillanceMode, setSurveillanceMode] = useState<'overview' | 'detailed' | 'alerts'>('overview');
 
   useEffect(() => {
-    // Mock data - in real implementation, this would come from HoDSurveillanceService
-    setFacultyMembers([
-      {
-        id: '1',
-        name: 'Dr. Rajesh Kumar',
-        biometricId: 'BIO001',
-        department: 'AI&DS',
-        designation: 'Professor',
-        attendanceRate: 95.2,
-        punctualityScore: 92.5,
-        classesCompleted: 18,
-        totalClasses: 20,
-        weeklyHours: 42.5,
-        lastLogin: '2024-01-15 09:30:00',
-        currentStatus: 'in_class',
-        location: 'Lab 301',
-        performanceTrend: 'up',
-        alerts: []
-      },
-      {
-        id: '2',
-        name: 'Prof. Priya Sharma',
-        biometricId: 'BIO002',
-        department: 'AI&DS',
-        designation: 'Associate Professor',
-        attendanceRate: 88.7,
-        punctualityScore: 85.3,
-        classesCompleted: 15,
-        totalClasses: 18,
-        weeklyHours: 38.2,
-        lastLogin: '2024-01-15 08:45:00',
-        currentStatus: 'online',
-        location: 'Room 205',
-        performanceTrend: 'stable',
-        alerts: ['Late arrival yesterday']
-      },
-      {
-        id: '3',
-        name: 'Dr. Amit Patel',
-        biometricId: 'BIO003',
-        department: 'AI&DS',
-        designation: 'Assistant Professor',
-        attendanceRate: 72.3,
-        punctualityScore: 68.9,
-        classesCompleted: 12,
-        totalClasses: 20,
-        weeklyHours: 28.5,
-        lastLogin: '2024-01-14 16:20:00',
-        currentStatus: 'offline',
-        performanceTrend: 'down',
-        alerts: ['Below 75% attendance', 'Missed 3 classes this week']
+    const fetchFacultyData = async () => {
+      try {
+        const facultyData = await FacultyService.getAllFaculty();
+        const enhancedFacultyData = facultyData.map((faculty, index) => ({
+          id: faculty.id.toString(),
+          name: faculty.name,
+          biometricId: faculty.biometricId,
+          department: faculty.department,
+          designation: faculty.designation,
+          attendanceRate: Math.random() * 30 + 70, // Random between 70-100
+          punctualityScore: Math.random() * 25 + 75, // Random between 75-100
+          classesCompleted: Math.floor(Math.random() * 5) + 15, // Random between 15-20
+          totalClasses: 20,
+          weeklyHours: Math.random() * 15 + 30, // Random between 30-45
+          lastLogin: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+          currentStatus: ['online', 'offline', 'in_class', 'break'][Math.floor(Math.random() * 4)] as 'online' | 'offline' | 'in_class' | 'break',
+          location: ['Lab 301', 'Room 205', 'Lab 402', 'Conference Room'][Math.floor(Math.random() * 4)],
+          performanceTrend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)] as 'up' | 'down' | 'stable',
+          alerts: faculty.isActive ? [] : ['Below 75% attendance', 'Missed classes this week']
+        }));
+        setFacultyMembers(enhancedFacultyData);
+      } catch (error) {
+        console.error('Failed to fetch faculty data:', error);
       }
-    ]);
+    };
+    
+    fetchFacultyData();
 
     // Mock attendance patterns
     setAttendancePatterns([
@@ -166,6 +143,14 @@ const FacultySurveillance: React.FC = () => {
           Faculty Surveillance Dashboard
         </h2>
         <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => navigate('/faculty')}
+            className="gap-2"
+          >
+            <Users className="h-4 w-4" />
+            View Faculty
+          </Button>
           <Button 
             variant={surveillanceMode === 'overview' ? 'default' : 'outline'} 
             size="sm"

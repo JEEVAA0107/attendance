@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   BarChart3,
   Settings,
@@ -15,7 +17,8 @@ import {
   UserX,
   Activity,
   Users,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
@@ -25,9 +28,22 @@ import RealTimeMonitor from '@/components/hod/RealTimeMonitor';
 import FacultySurveillance from '@/components/hod/FacultySurveillance';
 import StudentMonitoring from '@/components/hod/StudentMonitoring';
 import FacultyManagement from '@/components/hod/FacultyManagement';
+import StudentManagement from '@/components/hod/StudentManagement';
+import EventsManagement from '@/components/hod/EventsManagement';
+import HoDNavbar from '@/components/hod/HoDNavbar';
 
 const HoDWorkspace: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showCircularForm, setShowCircularForm] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   // Mock Data for Department Stats
   const [stats] = useState({
     totalFaculty: 14,
@@ -58,83 +74,152 @@ const HoDWorkspace: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">HoD Workspace</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation */}
+      <div className="sticky top-0 z-50 bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">HoD Workspace</h1>
               <Badge variant="secondary" className="text-sm">Role: HoD</Badge>
             </div>
-            <p className="text-gray-600">AI & Data Science Department - SmartAttend Hub</p>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate('/login/hod')}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
-          <Button
-            variant="destructive"
-            className="gap-2"
-            onClick={() => navigate('/login/hod')}
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
         </div>
+        <HoDNavbar activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
 
+      <div className="max-w-7xl mx-auto p-6">
         {/* Executive Dashboard Stats */}
         <DepartmentStats stats={stats} />
 
-        {/* Main Dashboard Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white p-1 rounded-lg border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="realtime">Real-Time</TabsTrigger>
-            <TabsTrigger value="faculty">Faculty Surveillance</TabsTrigger>
-            <TabsTrigger value="students">Student Monitoring</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="admin">Admin</TabsTrigger>
-          </TabsList>
+        {/* Main Dashboard Content */}
+        <div className="mt-6">
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Attendance Trend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Attendance Trends</CardTitle>
-                  <CardDescription>Faculty vs Student attendance over time</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={attendanceTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="faculty" stroke="#8884d8" name="Faculty" strokeWidth={2} />
-                      <Line type="monotone" dataKey="students" stroke="#82ca9d" name="Students" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+            {/* Year-wise Attendance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Year-wise Attendance Percentage</CardTitle>
+                <CardDescription>Current academic year attendance by year</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4">
+                    <div className="relative w-24 h-24 mx-auto mb-2">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="40" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle cx="48" cy="48" r="40" stroke="#3b82f6" strokeWidth="8" fill="none" strokeDasharray="251" strokeDashoffset="37.65" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-blue-600">85%</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">1st Year</div>
+                  </div>
+                  <div className="text-center p-4">
+                    <div className="relative w-24 h-24 mx-auto mb-2">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="40" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle cx="48" cy="48" r="40" stroke="#10b981" strokeWidth="8" fill="none" strokeDasharray="251" strokeDashoffset="55.22" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-green-600">78%</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">2nd Year</div>
+                  </div>
+                  <div className="text-center p-4">
+                    <div className="relative w-24 h-24 mx-auto mb-2">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="40" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle cx="48" cy="48" r="40" stroke="#f97316" strokeWidth="8" fill="none" strokeDasharray="251" strokeDashoffset="45.18" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-orange-600">82%</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">3rd Year</div>
+                  </div>
+                  <div className="text-center p-4">
+                    <div className="relative w-24 h-24 mx-auto mb-2">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="40" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle cx="48" cy="48" r="40" stroke="#8b5cf6" strokeWidth="8" fill="none" strokeDasharray="251" strokeDashoffset="52.71" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-purple-600">79%</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">4th Year</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Subject Performance */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Subject-wise Performance</CardTitle>
-                  <CardDescription>Average attendance rates by subject</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={subjectPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="subject" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="attendance" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Circular Update */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Circular Update</CardTitle>
+                <CardDescription>Send messages and files to faculty and students</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={showCircularForm} onOpenChange={setShowCircularForm}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                      Create Circular
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create Circular</DialogTitle>
+                      <DialogDescription>Send messages and files to faculty and students</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Message Title</Label>
+                          <Input placeholder="Enter message title" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Recipients</Label>
+                          <select className="w-full p-2 border rounded-md">
+                            <option>Faculty Only</option>
+                            <option>Students Only</option>
+                            <option>Faculty & Students</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Message Content</Label>
+                        <textarea className="w-full p-2 border rounded-md h-24" placeholder="Enter your message here..."></textarea>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <input type="file" className="hidden" id="circular-file" />
+                        <Button variant="outline" onClick={() => document.getElementById('circular-file')?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Attach File
+                        </Button>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowCircularForm(false)}>Cancel</Button>
+                      <Button className="bg-green-600 hover:bg-green-700">Send Circular</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
 
             {/* Quick Actions / Recent Alerts Preview */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -184,25 +269,21 @@ const HoDWorkspace: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+            </div>
+          )}
 
           {/* Real-Time Monitor Tab */}
-          <TabsContent value="realtime">
-            <RealTimeMonitor />
-          </TabsContent>
+          {activeTab === 'realtime' && <RealTimeMonitor />}
 
           {/* Faculty Surveillance Tab */}
-          <TabsContent value="faculty">
-            <FacultySurveillance />
-          </TabsContent>
+          {activeTab === 'faculty' && <FacultySurveillance />}
 
           {/* Student Monitoring Tab */}
-          <TabsContent value="students">
-            <StudentMonitoring />
-          </TabsContent>
+          {activeTab === 'students' && <StudentMonitoring />}
 
           {/* Analytics Tab (Placeholder for Phase 2) */}
-          <TabsContent value="analytics" className="space-y-6">
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Advanced Analytics</CardTitle>
@@ -213,12 +294,36 @@ const HoDWorkspace: React.FC = () => {
                 <p>Advanced analytics module is under development.</p>
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
+
+          {/* Events Tab */}
+          {activeTab === 'events' && <EventsManagement />}
 
           {/* Administration Tab */}
-          <TabsContent value="admin" className="space-y-6">
+          {activeTab === 'admin' && (
             <div className="space-y-6">
-              <FacultyManagement />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Faculty Management</CardTitle>
+                    <CardDescription>Manage faculty credentials and access</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FacultyManagement />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Student Management</CardTitle>
+                    <CardDescription>Manage student credentials and access</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StudentManagement />
+                  </CardContent>
+                </Card>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
@@ -250,9 +355,9 @@ const HoDWorkspace: React.FC = () => {
                 </Card>
               </div>
             </div>
-          </TabsContent>
+          )}
 
-        </Tabs>
+        </div>
       </div>
     </div>
   );

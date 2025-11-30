@@ -13,15 +13,20 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, UserCheck, UserX, RefreshCw } from 'lucide-react';
+import { Plus, Search, UserCheck, UserX, RefreshCw, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FacultyService, FacultyData } from '@/lib/facultyService';
 
 const FacultyManagement = () => {
+    const navigate = useNavigate();
     const [faculty, setFaculty] = useState<FacultyData[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingFaculty, setEditingFaculty] = useState<FacultyData | null>(null);
+    const [showDirectory, setShowDirectory] = useState(false);
     const [newFaculty, setNewFaculty] = useState({
         name: '',
         email: '',
@@ -75,6 +80,47 @@ const FacultyManagement = () => {
             fetchFaculty();
         } else {
             toast.error('Failed to update status');
+        }
+    };
+
+    // Handle Edit Faculty
+    const handleEditFaculty = (faculty: FacultyData) => {
+        setEditingFaculty(faculty);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleUpdateFaculty = async () => {
+        if (!editingFaculty) return;
+        
+        const result = await FacultyService.updateFaculty(editingFaculty.biometricId, {
+            name: editingFaculty.name,
+            email: editingFaculty.email,
+            designation: editingFaculty.designation,
+            department: editingFaculty.department
+        });
+
+        if (result.success) {
+            toast.success('Faculty updated successfully');
+            setIsEditDialogOpen(false);
+            setEditingFaculty(null);
+            fetchFaculty();
+        } else {
+            toast.error(result.error || 'Failed to update faculty');
+        }
+    };
+
+    // Handle Delete Faculty
+    const handleDeleteFaculty = async (biometricId: string, name: string) => {
+        if (!confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+            return;
+        }
+
+        const result = await FacultyService.deleteFaculty(biometricId);
+        if (result.success) {
+            toast.success('Faculty deleted successfully');
+            fetchFaculty();
+        } else {
+            toast.error(result.error || 'Failed to delete faculty');
         }
     };
 
@@ -159,85 +205,72 @@ const FacultyManagement = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Edit Faculty Dialog */}
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Edit Faculty</DialogTitle>
+                            <DialogDescription>
+                                Update faculty information.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {editingFaculty && (
+                            <div className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-name">Full Name</Label>
+                                    <Input
+                                        id="edit-name"
+                                        value={editingFaculty.name}
+                                        onChange={(e) => setEditingFaculty({ ...editingFaculty, name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-email">Email</Label>
+                                    <Input
+                                        id="edit-email"
+                                        type="email"
+                                        value={editingFaculty.email}
+                                        onChange={(e) => setEditingFaculty({ ...editingFaculty, email: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-designation">Designation</Label>
+                                    <Input
+                                        id="edit-designation"
+                                        value={editingFaculty.designation}
+                                        onChange={(e) => setEditingFaculty({ ...editingFaculty, designation: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-dept">Department</Label>
+                                    <Input
+                                        id="edit-dept"
+                                        value={editingFaculty.department}
+                                        onChange={(e) => setEditingFaculty({ ...editingFaculty, department: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleUpdateFaculty}>Update</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle>Faculty Directory</CardTitle>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search faculty..."
-                                    className="pl-8 w-[250px]"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-                            <Button variant="outline" size="icon" onClick={fetchFaculty}>
-                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Faculty ID</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Designation</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                            Loading faculty data...
-                                        </TableCell>
-                                    </TableRow>
-                                ) : filteredFaculty.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                            No faculty found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredFaculty.map((f) => (
-                                        <TableRow key={f.id}>
-                                            <TableCell className="font-medium">{f.biometricId}</TableCell>
-                                            <TableCell>{f.name}</TableCell>
-                                            <TableCell>{f.designation}</TableCell>
-                                            <TableCell>{f.email}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={f.isActive ? 'default' : 'secondary'} className={f.isActive ? 'bg-green-600' : 'bg-gray-400'}>
-                                                    {f.isActive ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleToggleStatus(f.biometricId, f.isActive)}
-                                                    className={f.isActive ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
-                                                >
-                                                    {f.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                                                    <span className="sr-only">Toggle Status</span>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Faculty Directory</h3>
+                <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/faculty-directory')}
+                    className="gap-2"
+                >
+                    <Eye className="h-4 w-4" />
+                    View Data
+                </Button>
+            </div>
         </div>
     );
 };

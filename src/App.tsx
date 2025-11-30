@@ -25,6 +25,8 @@ import Analytics from "./pages/Analytics";
 import StudentAnalytics from "./pages/StudentAnalytics";
 import DataExport from "./pages/DataExport";
 import Settings from "./pages/Settings";
+import FacultyDirectory from "./pages/FacultyDirectory";
+import StudentDirectory from "./pages/StudentDirectory";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 
@@ -200,6 +202,24 @@ const App = () => (
                     <Layout>
                       <Settings />
                     </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/faculty-directory"
+                element={
+                  <ProtectedRoute allowedRoles={['hod']}>
+                    <FacultyDirectory />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/student-directory"
+                element={
+                  <ProtectedRoute allowedRoles={['hod']}>
+                    <StudentDirectory />
                   </ProtectedRoute>
                 }
               />

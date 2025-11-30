@@ -15,7 +15,7 @@ import {
   XCircle,
   AlertTriangle
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
 
 interface ClassSchedule {
   id: string;
@@ -293,24 +293,7 @@ const FacultyDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Subject Attendance Chart */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Subject-wise Attendance Overview</CardTitle>
-            <CardDescription>Average attendance percentage across all your subjects</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={subjectStats}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="subject" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="avgAttendance" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+
 
         {/* Quick Actions */}
         <Card className="mt-8">
