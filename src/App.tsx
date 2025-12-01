@@ -26,7 +26,7 @@ import StudentAnalytics from "./pages/StudentAnalytics";
 import DataExport from "./pages/DataExport";
 import Settings from "./pages/Settings";
 import FacultyDirectory from "./pages/FacultyDirectory";
-import StudentDirectory from "./pages/StudentDirectory";
+import Student
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 
