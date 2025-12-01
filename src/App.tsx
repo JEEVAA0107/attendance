@@ -26,8 +26,7 @@ import StudentAnalytics from "./pages/StudentAnalytics";
 import DataExport from "./pages/DataExport";
 import Settings from "./pages/Settings";
 import FacultyDirectory from "./pages/FacultyDirectory";
-import StudentDirectory from "./pages/StudentDirectory";
-import Events from "./pages/Events";
+import Student
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 
@@ -63,9 +62,7 @@ const App = () => (
                 path="/hod-workspace"
                 element={
                   <ProtectedRoute allowedRoles={['hod']}>
-                    <Layout>
-                      <HoDWorkspace />
-                    </Layout>
+                    <HoDWorkspace />
                   </ProtectedRoute>
                 }
               />
@@ -204,17 +201,6 @@ const App = () => (
                   <ProtectedRoute>
                     <Layout>
                       <Settings />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/events"
-                element={
-                  <ProtectedRoute allowedRoles={['faculty']}>
-                    <Layout>
-                      <Events />
                     </Layout>
                   </ProtectedRoute>
                 }

@@ -75,25 +75,34 @@ const HoDWorkspace: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Header */}
+      {/* Top Navigation */}
       <div className="sticky top-0 z-50 bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <Shield className="h-6 w-6 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">HoD Workspace</h1>
               <Badge variant="secondary" className="text-sm">Role: HoD</Badge>
             </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate('/login/hod')}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
         </div>
+        <HoDNavbar activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Executive Dashboard Stats - Only show on Overview */}
-        {activeTab === 'overview' && <DepartmentStats stats={stats} />}
+        {/* Executive Dashboard Stats */}
+        <DepartmentStats stats={stats} />
 
         {/* Main Dashboard Content */}
-        <div className={activeTab === 'overview' ? 'mt-6' : ''}>
+        <div className="mt-6">
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (

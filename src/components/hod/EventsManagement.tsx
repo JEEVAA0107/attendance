@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,6 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Calendar, Edit, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '@/lib/db';
-import { events } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
 
 interface Event {
     id: number;
@@ -32,7 +29,10 @@ interface Event {
 }
 
 const EventsManagement = () => {
-    const [eventsList, setEventsList] = useState<Event[]>([]);
+    const [events, setEvents] = useState<Event[]>([
+        { id: 1, title: 'Annual Tech Fest', description: 'Department technical festival', date: '2024-02-15', time: '09:00', venue: 'Main Auditorium', image: '/placeholder.svg', status: 'upcoming' },
+        { id: 2, title: 'Faculty Meeting', description: 'Monthly department meeting', date: '2024-01-20', time: '14:00', venue: 'Conference Room', image: '/placeholder.svg', status: 'completed' }
+    ]);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -45,31 +45,22 @@ const EventsManagement = () => {
         image: ''
     });
 
-    const handleCreateEvent = async () => {
+    const handleCreateEvent = () => {
         if (!newEvent.title || !newEvent.date) {
             toast.error('Please fill in required fields');
             return;
         }
 
-        try {
-            await db.insert(events).values({
-                title: newEvent.title,
-                description: newEvent.description,
-                eventDate: newEvent.date,
-                eventTime: newEvent.time,
-                venue: newEvent.venue,
-                image: newEvent.image,
-                status: 'upcoming'
-            });
+        const event: Event = {
+            id: Date.now(),
+            ...newEvent,
+            status: 'upcoming'
+        };
 
-            toast.success('Event created successfully');
-            setIsAddDialogOpen(false);
-            setNewEvent({ title: '', description: '', date: '', time: '', venue: '', image: '' });
-            fetchEvents();
-        } catch (error) {
-            console.error('Error creating event:', error);
-            toast.error('Failed to create event');
-        }
+        setEvents([...events, event]);
+        toast.success('Event created successfully');
+        setIsAddDialogOpen(false);
+        setNewEvent({ title: '', description: '', date: '', time: '', venue: '', image: '' });
     };
 
     const handleEditEvent = (event: Event) => {
@@ -77,83 +68,28 @@ const EventsManagement = () => {
         setIsEditDialogOpen(true);
     };
 
-    const handleUpdateEvent = async () => {
+    const handleUpdateEvent = () => {
         if (!editingEvent) return;
         
-        try {
-            await db.update(events)
-                .set({
-                    title: editingEvent.title,
-                    description: editingEvent.description,
-                    eventDate: editingEvent.date,
-                    eventTime: editingEvent.time,
-                    venue: editingEvent.venue,
-                    updatedAt: new Date()
-                })
-                .where(eq(events.id, editingEvent.id));
-
-            toast.success('Event updated successfully');
-            setIsEditDialogOpen(false);
-            setEditingEvent(null);
-            fetchEvents();
-        } catch (error) {
-            console.error('Error updating event:', error);
-            toast.error('Failed to update event');
-        }
+        setEvents(events.map(e => e.id === editingEvent.id ? editingEvent : e));
+        toast.success('Event updated successfully');
+        setIsEditDialogOpen(false);
+        setEditingEvent(null);
     };
 
-    const handleDeleteEvent = async (id: number, title: string) => {
+    const handleDeleteEvent = (id: number, title: string) => {
         if (!confirm(`Delete "${title}"?`)) return;
-        
-        try {
-            await db.delete(events).where(eq(events.id, id));
-            toast.success('Event deleted successfully');
-            fetchEvents();
-        } catch (error) {
-            console.error('Error deleting event:', error);
-            toast.error('Failed to delete event');
-        }
+        setEvents(events.filter(e => e.id !== id));
+        toast.success('Event deleted successfully');
     };
 
-    const handleMarkCompleted = async (id: number) => {
-        try {
-            await db.update(events)
-                .set({ status: 'completed', updatedAt: new Date() })
-                .where(eq(events.id, id));
-            
-            toast.success('Event marked as completed');
-            fetchEvents();
-        } catch (error) {
-            console.error('Error updating event status:', error);
-            toast.error('Failed to update event status');
-        }
+    const handleMarkCompleted = (id: number) => {
+        setEvents(events.map(e => e.id === id ? { ...e, status: 'completed' } : e));
+        toast.success('Event marked as completed');
     };
 
-    const fetchEvents = async () => {
-        try {
-            const result = await db.select().from(events);
-            const formattedEvents = result.map(event => ({
-                id: event.id,
-                title: event.title,
-                description: event.description || '',
-                date: event.eventDate || '',
-                time: event.eventTime || '',
-                venue: event.venue || '',
-                image: event.image || '/placeholder.svg',
-                status: event.status as 'upcoming' | 'completed'
-            }));
-            setEventsList(formattedEvents);
-        } catch (error) {
-            console.error('Error fetching events:', error);
-        }
-    };
-
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
-    const upcomingEvents = eventsList.filter(e => e.status === 'upcoming');
-    const completedEvents = eventsList.filter(e => e.status === 'completed');
+    const upcomingEvents = events.filter(e => e.status === 'upcoming');
+    const completedEvents = events.filter(e => e.status === 'completed');
 
     return (
         <div className="space-y-6">
