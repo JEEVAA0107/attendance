@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Mail, Building } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Users, Mail, Building, Plus, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FacultyMember {
   name: string;
@@ -12,8 +17,11 @@ interface FacultyMember {
 }
 
 const Faculty = () => {
+  const { user } = useAuth();
   const [faculty, setFaculty] = useState<FacultyMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newFaculty, setNewFaculty] = useState({ name: '', designation: '', biometric_id: '', email: '' });
 
   useEffect(() => {
     // Static faculty data
@@ -46,11 +54,63 @@ const Faculty = () => {
     );
   }
 
+  const handleAddFaculty = () => {
+    if (newFaculty.name && newFaculty.designation && newFaculty.biometric_id && newFaculty.email) {
+      setFaculty([...faculty, { ...newFaculty, department: 'AI&DS' }]);
+      setNewFaculty({ name: '', designation: '', biometric_id: '', email: '' });
+      setShowAddDialog(false);
+    }
+  };
+
+  const handleRemoveFaculty = (index: number) => {
+    setFaculty(faculty.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="container py-8 space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-4xl font-heading font-bold gradient-text">Faculty Registry</h1>
-        <p className="text-muted-foreground mt-2">AI&DS Department Faculty with Biometric Authentication</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-heading font-bold gradient-text">Faculty Registry</h1>
+          <p className="text-muted-foreground mt-2">AI&DS Department Faculty with Biometric Authentication</p>
+        </div>
+        {user?.role === 'hod' && (
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Faculty
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Faculty</DialogTitle>
+                <DialogDescription>Add a new faculty member to the AI&DS department</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input value={newFaculty.name} onChange={(e) => setNewFaculty({...newFaculty, name: e.target.value})} placeholder="Enter faculty name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Designation</Label>
+                  <Input value={newFaculty.designation} onChange={(e) => setNewFaculty({...newFaculty, designation: e.target.value})} placeholder="e.g., Assistant Professor" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Biometric ID</Label>
+                  <Input value={newFaculty.biometric_id} onChange={(e) => setNewFaculty({...newFaculty, biometric_id: e.target.value})} placeholder="Enter biometric ID" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={newFaculty.email} onChange={(e) => setNewFaculty({...newFaculty, email: e.target.value})} placeholder="Enter email address" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button onClick={handleAddFaculty}>Add Faculty</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card className="glass-card">
@@ -109,10 +169,19 @@ const Faculty = () => {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t">
+                <div className="pt-2 border-t flex justify-between items-center">
                   <div className="text-xs text-muted-foreground">
                     Biometric Authentication Enabled
                   </div>
+                  {user?.role === 'hod' && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveFaculty(index)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

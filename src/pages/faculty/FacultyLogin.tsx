@@ -65,7 +65,7 @@ const FacultyLogin: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="w-full max-w-md shadow-lg">
+            <Card className="w-full max-w-md shadow-lg bg-white">
                 <CardHeader className="space-y-1 text-center">
                     <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                         <UserCheck className="h-6 w-6 text-blue-600" />

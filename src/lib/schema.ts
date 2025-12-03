@@ -169,3 +169,21 @@ export const attendanceReports = pgTable('attendance_reports', {
   typeIdx: index('idx_reports_type').on(table.reportType),
   dateIdx: index('idx_reports_date').on(table.reportDate),
 }));
+
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  eventDate: date('event_date').notNull(),
+  eventTime: varchar('event_time', { length: 10 }),
+  venue: varchar('venue', { length: 255 }),
+  image: text('image'),
+  status: varchar('status', { length: 20 }).default('upcoming'), // 'upcoming', 'completed'
+  createdBy: integer('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  statusIdx: index('idx_events_status').on(table.status),
+  dateIdx: index('idx_events_date').on(table.eventDate),
+  createdByIdx: index('idx_events_created_by').on(table.createdBy),
+}));

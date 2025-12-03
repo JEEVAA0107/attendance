@@ -1,40 +1,38 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Home from "./pages/Home";
-import HoDWorkspace from "./pages/HoDWorkspace";
-import FacultyDashboard from "./pages/FacultyDashboard";
+import MockDashboard from "./pages/MockDashboard";
+import HoDWorkspace from "./pages/hod/HoDWorkspace";
+import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
-import HoDLogin from "./pages/HoDLogin";
-import FacultyLogin from "./pages/FacultyLogin";
+import StudentWorkspace from "./pages/student/StudentWorkspace";
+import HoDLogin from "./pages/hod/HoDLogin";
+import FacultyLogin from "./pages/faculty/FacultyLogin";
 import StudentLogin from "./pages/StudentLogin";
-import Students from "./pages/Students";
+import Students from "./pages/hod/Students";
 import Subjects from "./pages/Subjects";
 import Timetable from "./pages/Timetable";
-import ManageStudents from "./pages/ManageStudents";
-import Faculty from "./pages/Faculty";
+import ManageStudents from "./pages/hod/ManageStudents";
+import Faculty from "./pages/faculty/Faculty";
 import Attendance from "./pages/Attendance";
-import Analytics from "./pages/Analytics";
-import StudentAnalytics from "./pages/StudentAnalytics";
+import Analytics from "./pages/hod/Analytics";
+import StudentAnalytics from "./pages/hod/StudentAnalytics";
 import DataExport from "./pages/DataExport";
 import Settings from "./pages/Settings";
-import FacultyDirectory from "./pages/FacultyDirectory";
-import Student
+import FacultyDirectory from "./pages/faculty/FacultyDirectory";
+import StudentDirectory from "./pages/hod/StudentDirectory";
+import Events from "./pages/hod/Events";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 
-const queryClient = new QueryClient();
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+    <ThemeProvider>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -52,7 +50,7 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <Home />
+                      <MockDashboard />
                     </Layout>
                   </ProtectedRoute>
                 }
@@ -92,6 +90,15 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['student']}>
                     <StudentDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/student-workspace"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudentWorkspace />
                   </ProtectedRoute>
                 }
               />
@@ -207,6 +214,17 @@ const App = () => (
               />
 
               <Route
+                path="/events"
+                element={
+                  <ProtectedRoute allowedRoles={['faculty']}>
+                    <Layout>
+                      <Events />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/faculty-directory"
                 element={
                   <ProtectedRoute allowedRoles={['hod']}>
@@ -230,7 +248,6 @@ const App = () => (
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider>
-);
+  );
 
 export default App;

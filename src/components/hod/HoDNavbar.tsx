@@ -14,6 +14,7 @@ const HoDNavbar: React.FC<HoDNavbarProps> = ({ activeTab, onTabChange }) => {
     { id: 'students', label: 'Student Monitoring' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'events', label: 'Events' },
+    { id: 'batches', label: 'Batches' },
     { id: 'admin', label: 'Admin' }
   ];
 

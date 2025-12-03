@@ -1,86 +1,77 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Users, UserCheck, BookOpen, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, UserCheck, TrendingUp, AlertTriangle } from 'lucide-react';
+
+interface Stats {
+  totalFaculty: number;
+  activeFaculty: number;
+  totalStudents: number;
+  avgAttendance: number;
+  todayClasses: number;
+  completedClasses: number;
+  alertsCount: number;
+}
 
 interface DepartmentStatsProps {
-    stats: {
-        totalFaculty: number;
-        activeFaculty: number;
-        totalStudents: number;
-        avgAttendance: number;
-        todayClasses: number;
-        completedClasses: number;
-        alertsCount: number;
-    };
+  stats: Stats;
 }
 
 const DepartmentStats: React.FC<DepartmentStatsProps> = ({ stats }) => {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-600">Total Faculty</p>
-                            <p className="text-2xl font-bold text-gray-900">{stats.totalFaculty}</p>
-                        </div>
-                        <Users className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <div className="mt-2">
-                        <Badge variant="secondary">{stats.activeFaculty} Active</Badge>
-                    </div>
-                </CardContent>
-            </Card>
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.totalFaculty}</div>
+          <p className="text-xs text-muted-foreground">
+            {stats.activeFaculty} active today
+          </p>
+        </CardContent>
+      </Card>
 
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-600">Total Students</p>
-                            <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
-                        </div>
-                        <UserCheck className="h-8 w-8 text-green-600" />
-                    </div>
-                    <div className="mt-2">
-                        <Progress value={stats.avgAttendance} className="w-full" />
-                        <p className="text-xs text-gray-500 mt-1">{stats.avgAttendance}% Avg Attendance</p>
-                    </div>
-                </CardContent>
-            </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+          <UserCheck className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.totalStudents}</div>
+          <p className="text-xs text-muted-foreground">
+            Across all batches
+          </p>
+        </CardContent>
+      </Card>
 
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-600">Today's Classes</p>
-                            <p className="text-2xl font-bold text-gray-900">{stats.completedClasses}/{stats.todayClasses}</p>
-                        </div>
-                        <BookOpen className="h-8 w-8 text-purple-600" />
-                    </div>
-                    <div className="mt-2">
-                        <Progress value={(stats.completedClasses / stats.todayClasses) * 100} className="w-full" />
-                    </div>
-                </CardContent>
-            </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Avg Attendance</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.avgAttendance}%</div>
+          <p className="text-xs text-muted-foreground">
+            Department average
+          </p>
+        </CardContent>
+      </Card>
 
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-600">Alerts</p>
-                            <p className="text-2xl font-bold text-red-600">{stats.alertsCount}</p>
-                        </div>
-                        <AlertTriangle className="h-8 w-8 text-red-600" />
-                    </div>
-                    <div className="mt-2">
-                        <Badge variant="destructive">Needs Attention</Badge>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Today's Classes</CardTitle>
+          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.completedClasses}/{stats.todayClasses}</div>
+          <p className="text-xs text-muted-foreground">
+            {stats.alertsCount} alerts pending
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default DepartmentStats;

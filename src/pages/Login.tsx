@@ -63,10 +63,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50 p-4">
       <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[size:20px_20px]" />
 
-      <Card className="w-full max-w-md glass-card relative z-10 animate-fade-in">
+      <Card className="w-full max-w-md relative z-10 animate-fade-in bg-white shadow-xl">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse-glow">
             <LayoutDashboard className="h-10 w-10 text-white" />

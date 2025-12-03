@@ -67,7 +67,7 @@ const Landing = () => {
               Trusted by 500+ Educational Institutions
             </div>
             <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
-              Track Smarter. <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Teach Better.</span>
+              <span className="text-black">Track Smarter.</span> <span className="text-blue-600 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-extrabold">Teach Better.</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Transform your college attendance management with our intelligent, automated system.
@@ -77,7 +77,7 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
               <Link to="/login/hod">
                 <Button size="lg" className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all">
-                  HoD Login
+                  HOD Login
                 </Button>
               </Link>
               <Link to="/login/faculty">
@@ -128,12 +128,12 @@ const Landing = () => {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="hover:shadow-lg transition-all duration-300">
+              <Card key={index} className="bg-white hover:shadow-lg transition-all duration-300">
                 <CardContent className="p-6 space-y-4">
                   <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg">{feature.title}</h3>
+                  <h3 className="font-semibold text-lg text-gray-900">{feature.title}</h3>
                   <p className="text-gray-600 text-sm">{feature.description}</p>
                 </CardContent>
               </Card>

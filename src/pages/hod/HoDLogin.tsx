@@ -65,14 +65,14 @@ const HoDLogin: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="w-full max-w-md shadow-lg">
+            <Card className="w-full max-w-md shadow-lg bg-white">
                 <CardHeader className="space-y-1 text-center">
                     <div className="mx-auto h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mb-4">
                         <Shield className="h-6 w-6 text-purple-600" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-purple-900">HoD Login</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-purple-900">HOD Login</CardTitle>
                     <CardDescription>
-                        Enter your Name and Faculty ID to access the HoD Workspace
+                        Head of the Department - Enter your Name and Faculty ID to access the HOD Workspace
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
