@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light';
 
 interface ThemeContextType {
   theme: Theme;
@@ -9,23 +9,15 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>('light');
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+}
 
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('smartattend_theme') as Theme;
-    if (storedTheme) {
-      setTheme(storedTheme);
-      document.documentElement.classList.toggle('dark', storedTheme === 'dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('smartattend_theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  const theme: Theme = 'light';
+  const toggleTheme = () => {}; // No-op since we only support light mode
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>

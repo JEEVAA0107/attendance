@@ -39,7 +39,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
   return (
     <>
-      {user?.role !== 'hod' && <Header />}
+      {user?.role !== 'hod' && user?.role !== 'faculty' && user?.role !== 'student' && <Header />}
       <main className="min-h-[calc(100vh-4rem)]">{children}</main>
     </>
   );
@@ -48,7 +48,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 function getRoleBasedRedirect(role: string): string {
   switch (role) {
     case 'student':
-      return '/student-dashboard';
+      return '/student-workspace';
     case 'faculty':
       return '/faculty-dashboard';
     case 'hod':

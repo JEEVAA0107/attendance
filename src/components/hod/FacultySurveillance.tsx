@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FacultyService } from '@/lib/facultyService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,7 +50,6 @@ interface AttendancePattern {
 }
 
 const FacultySurveillance: React.FC = () => {
-  const navigate = useNavigate();
   const [facultyMembers, setFacultyMembers] = useState<FacultyMember[]>([]);
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   const [attendancePatterns, setAttendancePatterns] = useState<AttendancePattern[]>([]);
@@ -143,14 +142,6 @@ const FacultySurveillance: React.FC = () => {
           Faculty Surveillance Dashboard
         </h2>
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => navigate('/faculty')}
-            className="gap-2"
-          >
-            <Users className="h-4 w-4" />
-            View Faculty
-          </Button>
           <Button 
             variant={surveillanceMode === 'overview' ? 'default' : 'outline'} 
             size="sm"

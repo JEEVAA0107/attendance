@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Upload, Search, Edit, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface StudentData {
@@ -28,7 +27,6 @@ interface StudentData {
 }
 
 const StudentManagement = () => {
-    const navigate = useNavigate();
     const [students, setStudents] = useState<StudentData[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -190,17 +188,76 @@ const StudentManagement = () => {
                 </div>
             </div>
 
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Student Directory</h3>
-                <Button 
-                    variant="outline" 
-                    onClick={() => navigate('/student-directory')}
-                    className="gap-2"
-                >
-                    <Eye className="h-4 w-4" />
-                    View Data
-                </Button>
-            </div>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Student Directory</CardTitle>
+                            <CardDescription>Manage and view all student records</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search students..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-8 w-64"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Roll Number</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Year</TableHead>
+                                <TableHead>Section</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredStudents.map((student) => (
+                                <TableRow key={student.id}>
+                                    <TableCell className="font-medium">{student.name}</TableCell>
+                                    <TableCell>{student.rollNumber}</TableCell>
+                                    <TableCell>{student.email}</TableCell>
+                                    <TableCell>{student.year}</TableCell>
+                                    <TableCell>{student.section}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={student.isActive ? 'default' : 'secondary'}>
+                                            {student.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleEditStudent(student)}
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleDeleteStudent(student.id, student.name)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

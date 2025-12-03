@@ -1,0 +1,766 @@
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Upload, Calendar, Download, Trash2, Users, BookOpen, AlertTriangle, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import { db } from '@/lib/db';
+import { students as studentsTable, attendanceRecords, subjects, staff } from '@/lib/schema';
+import { eq, and } from 'drizzle-orm';
+import { useAuth } from '@/contexts/AuthContext';
+import { Check } from 'lucide-react';
+import { AttendanceService, type StudentAttendanceRecord, type AttendanceStats } from '@/lib/attendanceService';
+import { PrecisionPanel } from '@/components/PrecisionPanel';
+
+interface Student {
+  id: string;
+  name: string;
+  rollNumber: string;
+  batch?: string;
+}
+
+interface PeriodAttendance {
+  [key: number]: boolean; // period number -> present/absent
+}
+
+interface AttendanceRecord {
+  studentId: string;
+  periods: PeriodAttendance;
+}
+
+const Attendance = () => {
+  const { user } = useAuth();
+  const [selectedBatch, setSelectedBatch] = useState('2022');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [attendance, setAttendance] = useState<Map<string, PeriodAttendance>>(new Map());
+  const [attendanceService, setAttendanceService] = useState<AttendanceService | null>(null);
+  const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [stats, setStats] = useState<AttendanceStats | null>(null);
+  const [inconsistencies, setInconsistencies] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      setAttendanceService(new AttendanceService(user.uid));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const loadAllStudents = async () => {
+      if (!user) return;
+      try {
+        const loadedStudents = await db.select().from(studentsTable).where(eq(studentsTable.userId, user.uid));
+        setAllStudents(loadedStudents);
+      } catch (error) {
+        console.error('Error loading students:', error);
+        toast.error('Failed to load students');
+      }
+    };
+    loadAllStudents();
+  }, [user]);
+
+  // Filter students by selected batch
+  useEffect(() => {
+    const batchStudents = allStudents.filter(student => student.batch === selectedBatch);
+    const sortedStudents = batchStudents.sort((a, b) => {
+      const aIsUA = (a.rollNumber || '').includes('UA');
+      const bIsUA = (b.rollNumber || '').includes('UA');
+      const aIsLA = (a.rollNumber || '').includes('LA');
+      const bIsLA = (b.rollNumber || '').includes('LA');
+
+      if (aIsUA && bIsLA) return -1;
+      if (aIsLA && bIsUA) return 1;
+
+      return (a.rollNumber || '').localeCompare(b.rollNumber || '', undefined, { numeric: true });
+    });
+
+    setStudents(sortedStudents);
+  }, [allStudents, selectedBatch]);
+
+  // Load attendance data
+  useEffect(() => {
+    const loadAttendance = async () => {
+      if (!user || students.length === 0) return;
+
+      try {
+        const data = await db.select().from(attendanceRecords)
+          .where(and(
+            eq(attendanceRecords.userId, user.uid),
+            eq(attendanceRecords.attendanceDate, selectedDate)
+          ));
+
+        const newAttendance = new Map<string, PeriodAttendance>();
+
+        students.forEach(student => {
+          const record = data.find(r => r.studentId === student.id);
+          const periods: PeriodAttendance = {
+            1: record?.period1 || false,
+            2: record?.period2 || false,
+            3: record?.period3 || false,
+            4: record?.period4 || false,
+            5: record?.period5 || false,
+            6: record?.period6 || false,
+            7: record?.period7 || false,
+          };
+          newAttendance.set(student.id, periods);
+        });
+
+        setAttendance(newAttendance);
+      } catch (error) {
+        console.error('Load failed:', error);
+        // Initialize empty
+        const newAttendance = new Map<string, PeriodAttendance>();
+        students.forEach(student => {
+          const periods: PeriodAttendance = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false };
+          newAttendance.set(student.id, periods);
+        });
+        setAttendance(newAttendance);
+      }
+    };
+
+    loadAttendance();
+  }, [user, students, selectedDate]);
+
+  const batches = ['2024', '2023', '2022', '2021'];
+  const periods = [
+    { number: 1, time: '9:00 - 9:50' },
+    { number: 2, time: '9:50 - 10:40' },
+    { number: 3, time: '10:40 - 11:30' },
+    { number: 4, time: '11:30 - 12:20' },
+    { number: 5, time: '2:00 - 2:50', isAfterLunch: true },
+    { number: 6, time: '2:50 - 3:40', isAfterLunch: true },
+    { number: 7, time: '3:40 - 4:30', isAfterLunch: true },
+  ];
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert to JSON with header row as keys
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          defval: '',
+          blankrows: false
+        }) as any[][];
+
+        if (jsonData.length < 1) {
+          toast.error('File is empty or has no data');
+          return;
+        }
+
+        // Simple extraction like ChatGPT - read all data directly
+        const importedStudents: Student[] = [];
+
+        jsonData.forEach((row, index) => {
+          if (!row || row.length === 0) return;
+
+          // Skip empty rows
+          const hasData = row.some(cell => cell && String(cell).trim() !== '');
+          if (!hasData) return;
+
+          const student: Student = {
+            id: `student-${index + 1}`,
+            name: String(row[0] || '').trim(),
+            rollNumber: String(row[1] || '').trim()
+          };
+
+          // Only add if first column has data
+          if (student.name) {
+            importedStudents.push(student);
+          }
+        });
+
+        // Sort by roll number
+        const sortedStudents = importedStudents.sort((a, b) =>
+          a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true })
+        );
+
+        setStudents(sortedStudents);
+
+        // Save to localStorage
+        localStorage.setItem('smartattend_students', JSON.stringify(sortedStudents));
+
+        // Initialize attendance for all students
+        const newAttendance = new Map<string, PeriodAttendance>();
+        sortedStudents.forEach(student => {
+          const periodData: PeriodAttendance = {};
+          periods.forEach(p => {
+            periodData[p.number] = false; // default to absent
+          });
+          newAttendance.set(student.id, periodData);
+        });
+        setAttendance(newAttendance);
+
+        toast.success(`Imported ${sortedStudents.length} students successfully`);
+      } catch (error) {
+        toast.error('Failed to import Excel file. Please check the format.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const togglePeriodAttendance = async (studentId: string, periodNumber: number) => {
+    if (!user) return;
+
+    const currentStatus = attendance.get(studentId)?.[periodNumber] || false;
+    const newStatus = !currentStatus;
+
+    // Update UI immediately
+    setAttendance(prev => {
+      const newMap = new Map(prev);
+      const periods = newMap.get(studentId) || {};
+      periods[periodNumber] = newStatus;
+      newMap.set(studentId, periods);
+      return newMap;
+    });
+
+    // Save to database directly
+    try {
+      const periods = attendance.get(studentId) || {};
+      periods[periodNumber] = newStatus;
+
+      // Check if record exists
+      const existing = await db.select().from(attendanceRecords)
+        .where(and(
+          eq(attendanceRecords.studentId, parseInt(studentId)),
+          eq(attendanceRecords.attendanceDate, selectedDate),
+          eq(attendanceRecords.userId, user.uid)
+        ));
+
+      const recordData = {
+        studentId: parseInt(studentId),
+        userId: user.uid,
+        attendanceDate: selectedDate,
+        period1: periods[1] || false,
+        period2: periods[2] || false,
+        period3: periods[3] || false,
+        period4: periods[4] || false,
+        period5: periods[5] || false,
+        period6: periods[6] || false,
+        period7: periods[7] || false,
+      };
+
+      if (existing.length > 0) {
+        // Update existing
+        await db.update(attendanceRecords)
+          .set(recordData)
+          .where(eq(attendanceRecords.id, existing[0].id));
+      } else {
+        // Insert new
+        await db.insert(attendanceRecords).values(recordData);
+      }
+
+    } catch (error) {
+      console.error('Save failed:', error);
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!user || students.length === 0) {
+      toast.error('No students found');
+      return;
+    }
+
+    try {
+      let savedCount = 0;
+      
+      for (const student of students) {
+        const periods = attendance.get(student.id) || {};
+        
+        const recordData = {
+          studentId: parseInt(student.id),
+          userId: user.uid,
+          attendanceDate: selectedDate,
+          period1: periods[1] || false,
+          period2: periods[2] || false,
+          period3: periods[3] || false,
+          period4: periods[4] || false,
+          period5: periods[5] || false,
+          period6: periods[6] || false,
+          period7: periods[7] || false,
+        };
+
+        const existing = await db.select().from(attendanceRecords)
+          .where(and(
+            eq(attendanceRecords.studentId, parseInt(student.id)),
+            eq(attendanceRecords.attendanceDate, selectedDate),
+            eq(attendanceRecords.userId, user.uid)
+          ));
+
+        if (existing.length > 0) {
+          await db.update(attendanceRecords)
+            .set(recordData)
+            .where(eq(attendanceRecords.id, existing[0].id));
+        } else {
+          await db.insert(attendanceRecords).values(recordData);
+        }
+        savedCount++;
+      }
+
+      const now = new Date();
+      const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+      const time = now.toLocaleTimeString();
+      toast.success(`Attendance saved for ${savedCount} students on ${day}, ${selectedDate} at ${time}`);
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      toast.error('Failed to save attendance');
+    }
+  };
+
+  const calculateStats = () => {
+    let fulldayPresent = 0;
+    let partialPresent = 0;
+    let totalAbsent = 0;
+
+    students.forEach(student => {
+      const studentPeriods = attendance.get(student.id) || {};
+      const presentPeriods = periods.filter(period => studentPeriods[period.number]).length;
+
+      if (presentPeriods === 7) {
+        fulldayPresent++;
+      } else if (presentPeriods > 0) {
+        partialPresent++;
+      } else {
+        totalAbsent++;
+      }
+    });
+
+    return { fulldayPresent, partialPresent, totalAbsent };
+  };
+
+  const localStats = calculateStats();
+
+  const generateReport = async () => {
+    if (!attendanceService) return;
+
+    try {
+      let report;
+      switch (reportType) {
+        case 'daily':
+          report = await attendanceService.generateDailyReport(selectedDate, selectedBatch);
+          break;
+        case 'weekly':
+          const weekStart = new Date(selectedDate);
+          weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          report = await attendanceService.generateWeeklyReport(
+            weekStart.toISOString().split('T')[0],
+            weekEnd.toISOString().split('T')[0],
+            selectedBatch
+          );
+          break;
+        case 'monthly':
+          const date = new Date(selectedDate);
+          report = await attendanceService.generateMonthlyReport(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            selectedBatch
+          );
+          break;
+      }
+
+      const blob = await attendanceService.exportToExcel(report, 'college');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reportType}_attendance_report_${selectedDate}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report exported successfully`);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
+    }
+  };
+
+  return (
+    <div className="container py-8 space-y-8 animate-fade-in">
+      <div>
+        <h1 className="text-4xl font-heading font-bold gradient-text">Daily Attendance</h1>
+        <p className="text-muted-foreground mt-2">Mark daily attendance for 7 periods (4 before lunch, 3 after lunch)</p>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      <Tabs defaultValue="attendance" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="attendance">Daily Attendance</TabsTrigger>
+          <TabsTrigger value="reports">Reports & Analytics</TabsTrigger>
+          <TabsTrigger value="precision">Precision Engine</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attendance" className="space-y-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Configuration & Upload</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Batch</label>
+                  <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2021">Batch 2021</SelectItem>
+                      <SelectItem value="2022">Batch 2022</SelectItem>
+                      <SelectItem value="2023">Batch 2023</SelectItem>
+                      <SelectItem value="2024">Batch 2024</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                  <label className="text-sm font-medium">Upload Student List</label>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
+                      className="flex-1"
+                      size="sm"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Upload Excel</span>
+                      <span className="sm:hidden">Upload</span>
+                    </Button>
+                    {students.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          setStudents([]);
+                          setAttendance(new Map());
+                          localStorage.removeItem('smartattend_students');
+                          toast.success('All students deleted successfully');
+                        }}
+                        size="sm"
+                        className="px-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {students.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-4">
+                  <Card className="bg-primary/10 border-primary/20">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Students</p>
+                        <p className="text-2xl font-bold text-primary">{students.length}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-primary" />
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-success/10 border-success/20">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Fullday Present</p>
+                        <p className="text-2xl font-bold text-success">{localStats.fulldayPresent}</p>
+                      </div>
+                      <Calendar className="h-8 w-8 text-success" />
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-blue-100 border-blue-200">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Partial Present</p>
+                        <p className="text-2xl font-bold text-blue-600">{localStats.partialPresent}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-blue-600" />
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-red-100 border-red-200">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Absent</p>
+                        <p className="text-2xl font-bold text-red-600">{localStats.totalAbsent}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-red-600" />
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-warning/10 border-warning/20">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Attendance %</p>
+                        <p className="text-lg font-bold text-warning">{Math.round(((localStats.fulldayPresent + localStats.partialPresent * 0.5) / students.length) * 100) || 0}%</p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-warning" />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {inconsistencies.length > 0 && (
+            <Card className="glass-card border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-700">
+                  <AlertTriangle className="h-5 w-5" />
+                  Attendance Inconsistencies Detected
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {inconsistencies.map((issue, index) => (
+                    <div key={index} className="p-3 bg-white rounded border border-orange-200">
+                      <div className="font-medium text-orange-800">{issue.studentName} ({issue.rollNumber})</div>
+                      <div className="text-sm text-orange-600">{issue.message}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {students.length > 0 ? (
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Period-wise Attendance Grid</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Periods 1-4 (Before Lunch: 9:00 AM - 12:20 PM) | Lunch Break: 12:45 PM - 2:00 PM | Periods 5-7 (After Lunch: 2:00 PM - 4:30 PM)
+                </p>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">S.No</TableHead>
+                      <TableHead className="min-w-[120px]">Roll No</TableHead>
+                      <TableHead className="min-w-[200px]">Student Name</TableHead>
+                      {periods.map((period, idx) => (
+                        <TableHead key={period.number} className="text-center">
+                          <div className="flex flex-col items-center">
+                            <span className="font-semibold">P{period.number}</span>
+                            <span className="text-xs text-muted-foreground">{period.time}</span>
+                          </div>
+                          {idx === 3 && (
+                            <div className="mt-1 text-xs text-warning font-medium">
+                              → Lunch
+                            </div>
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((student, index) => {
+                      const studentPeriods = attendance.get(student.id) || {};
+                      return (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{student.rollNumber}</TableCell>
+                          <TableCell className="font-bold text-primary">{student.name}</TableCell>
+                          {periods.map((period) => (
+                            <TableCell key={period.number} className="text-center">
+                              <div className="flex justify-center">
+                                {studentPeriods[period.number] ? (
+                                  <div
+                                    className="w-6 h-6 bg-green-500 rounded flex items-center justify-center cursor-pointer"
+                                    onClick={() => togglePeriodAttendance(student.id, period.number)}
+                                  >
+                                    <Check className="h-4 w-4 text-white" />
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="w-6 h-6 border-2 border-gray-300 rounded cursor-pointer hover:border-green-400"
+                                    onClick={() => togglePeriodAttendance(student.id, period.number)}
+                                  />
+                                )}
+                              </div>
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                  <Button onClick={handleSaveAttendance} className="flex-1 btn-hero">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Save Attendance
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const attendanceData = students.map((student, index) => {
+                        const studentPeriods = attendance.get(student.id) || {};
+                        const row: any = {
+                          'S.No': index + 1,
+                          'Roll No': student.rollNumber,
+                          'Student Name': student.name
+                        };
+                        periods.forEach(period => {
+                          row[`P${period.number} (${period.time})`] = studentPeriods[period.number] ? 'Present' : 'Absent';
+                        });
+                        return row;
+                      });
+
+                      const worksheet = XLSX.utils.json_to_sheet(attendanceData);
+                      const workbook = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(workbook, worksheet, `Attendance`);
+                      XLSX.writeFile(workbook, `Attendance_Batch_${selectedBatch}_${selectedDate}.xlsx`);
+                      toast.success('Attendance exported to Excel');
+                    }}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Export Excel</span>
+                    <span className="sm:hidden">Export</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="glass-card">
+              <CardContent className="p-12 text-center">
+                <Upload className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Students Found for Batch {selectedBatch}</h3>
+                <p className="text-muted-foreground mb-4">
+                  Students from the Students page will automatically appear here. Total students in database: {allStudents.length}
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={() => window.location.href = '/students'}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Go to Students Page
+                  </Button>
+                  <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Excel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Generate Reports</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Generate comprehensive attendance reports with analytics and export to Excel
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Report Type</label>
+                  <Select value={reportType} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setReportType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily Report</SelectItem>
+                      <SelectItem value="weekly">Weekly Report</SelectItem>
+                      <SelectItem value="monthly">Monthly Report</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reference Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Batch Filter</label>
+                  <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2021">Batch 2021</SelectItem>
+                      <SelectItem value="2022">Batch 2022</SelectItem>
+                      <SelectItem value="2023">Batch 2023</SelectItem>
+                      <SelectItem value="2024">Batch 2024</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {stats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  <Card className="bg-primary/10 border-primary/20">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-primary">{stats.totalStudents}</div>
+                      <div className="text-sm text-muted-foreground">Total Students</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-success/10 border-success/20">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-success">{stats.presentStudents}</div>
+                      <div className="text-sm text-muted-foreground">Present</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-blue-100 border-blue-200">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600">{stats.partialStudents}</div>
+                      <div className="text-sm text-muted-foreground">Partial</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-warning/10 border-warning/20">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-warning">{stats.attendancePercentage}%</div>
+                      <div className="text-sm text-muted-foreground">Attendance</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <Button onClick={generateReport} className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate & Export Report
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="precision" className="space-y-6">
+          <PrecisionPanel />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default Attendance;

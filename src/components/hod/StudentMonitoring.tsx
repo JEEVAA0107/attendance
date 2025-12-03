@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ interface StudentAlert {
 }
 
 const StudentMonitoring: React.FC = () => {
-    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
     // Mock data
@@ -121,10 +119,7 @@ const StudentMonitoring: React.FC = () => {
                         <FileText className="h-4 w-4 mr-2" />
                         Report
                     </Button>
-                    <Button onClick={() => navigate('/students')}>
-                        <Users className="h-4 w-4 mr-2" />
-                        Manage Students
-                    </Button>
+
                 </div>
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,9 +30,11 @@ import StudentMonitoring from '@/components/hod/StudentMonitoring';
 import FacultyManagement from '@/components/hod/FacultyManagement';
 import StudentManagement from '@/components/hod/StudentManagement';
 import EventsManagement from '@/components/hod/EventsManagement';
+import BatchesManagement from '@/components/hod/BatchesManagement';
 import HoDNavbar from '@/components/hod/HoDNavbar';
+import Layout from '@/components/layout/Layout';
 
-const HoDWorkspace: React.FC = () => {
+const HoDWorkspace: React.FC = memo(() => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
@@ -44,8 +46,8 @@ const HoDWorkspace: React.FC = () => {
       setActiveTab(tab);
     }
   }, [searchParams]);
-  // Mock Data for Department Stats
-  const [stats] = useState({
+  // Memoized mock data for better performance
+  const stats = useMemo(() => ({
     totalFaculty: 14,
     activeFaculty: 12,
     totalStudents: 240,
@@ -53,56 +55,47 @@ const HoDWorkspace: React.FC = () => {
     todayClasses: 8,
     completedClasses: 6,
     alertsCount: 3
-  });
+  }), []);
 
-  // Mock Data for Charts
-  const attendanceTrend = [
+  const attendanceTrend = useMemo(() => [
     { month: 'Aug', faculty: 92, students: 85 },
     { month: 'Sep', faculty: 89, students: 82 },
     { month: 'Oct', faculty: 94, students: 78 },
     { month: 'Nov', faculty: 91, students: 80 },
     { month: 'Dec', faculty: 88, students: 76 },
     { month: 'Jan', faculty: 93, students: 79 }
-  ];
+  ], []);
 
-  const subjectPerformance = [
+  const subjectPerformance = useMemo(() => [
     { subject: 'AI/ML', attendance: 82 },
     { subject: 'DSA', attendance: 75 },
     { subject: 'DBMS', attendance: 88 },
     { subject: 'OS', attendance: 71 },
     { subject: 'CN', attendance: 79 }
-  ];
+  ], []);
 
   return (
+    <Layout>
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation */}
+      {/* Top Header */}
       <div className="sticky top-0 z-50 bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">HoD Workspace</h1>
-              <Badge variant="secondary" className="text-sm">Role: HoD</Badge>
+              <Shield className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">HOD Workspace</h1>
+              <Badge variant="secondary" className="text-sm">Head of the Department</Badge>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-              onClick={() => navigate('/login/hod')}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
           </div>
         </div>
-        <HoDNavbar activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Executive Dashboard Stats */}
-        <DepartmentStats stats={stats} />
+        {/* Executive Dashboard Stats - Only show on Overview */}
+        {activeTab === 'overview' && <DepartmentStats stats={stats} />}
 
         {/* Main Dashboard Content */}
-        <div className="mt-6">
+        <div className={activeTab === 'overview' ? 'mt-6' : ''}>
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (
@@ -300,6 +293,9 @@ const HoDWorkspace: React.FC = () => {
           {/* Events Tab */}
           {activeTab === 'events' && <EventsManagement />}
 
+          {/* Batches Tab */}
+          {activeTab === 'batches' && <BatchesManagement />}
+
           {/* Administration Tab */}
           {activeTab === 'admin' && (
             <div className="space-y-6">
@@ -360,7 +356,10 @@ const HoDWorkspace: React.FC = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
-};
+});
+
+HoDWorkspace.displayName = 'HoDWorkspace';
 
 export default HoDWorkspace;

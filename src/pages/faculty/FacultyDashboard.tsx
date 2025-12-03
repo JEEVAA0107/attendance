@@ -39,6 +39,7 @@ const FacultyDashboard: React.FC = () => {
   const { user } = useAuth();
   const [todaySchedule, setTodaySchedule] = useState<ClassSchedule[]>([]);
   const [subjectStats, setSubjectStats] = useState<SubjectStats[]>([]);
+
   const [dashboardStats, setDashboardStats] = useState({
     totalClasses: 0,
     completedClasses: 0,
@@ -148,20 +149,29 @@ const FacultyDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <UserCheck className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Faculty Dashboard</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Header */}
+      <div className="sticky top-0 z-50 bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Faculty Dashboard</h1>
+              <Badge variant="secondary" className="text-sm">Role: Faculty</Badge>
+            </div>
           </div>
-          <p className="text-gray-600">Welcome back, {user?.name}!</p>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary">{user?.role?.toUpperCase()}</Badge>
-            <Badge variant="outline">ID: {user?.biometricId}</Badge>
+          <div className="pb-4">
+            <p className="text-gray-600">Welcome back, {user?.name}!</p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="outline">ID: {user?.biometricId}</Badge>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6">
+
+
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -295,33 +305,7 @@ const FacultyDashboard: React.FC = () => {
 
 
 
-        {/* Quick Actions */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Frequently used faculty tools</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button className="h-20 flex flex-col gap-2">
-                <CheckCircle className="h-6 w-6" />
-                Mark Attendance
-              </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => navigate('/students')}>
-                <Users className="h-6 w-6" />
-                View Students
-              </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
-                <BookOpen className="h-6 w-6" />
-                Manage Subjects
-              </Button>
-              <Button variant="outline" className="h-20 flex flex-col gap-2">
-                <Calendar className="h-6 w-6" />
-                View Timetable
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );
