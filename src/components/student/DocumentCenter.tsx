@@ -106,11 +106,11 @@ const DocumentCenter: React.FC<DocumentCenterProps> = ({ studentData }) => {
     },
     {
       id: 3,
-      documentType: 'Fee Receipt',
-      purpose: 'Income tax filing',
+      documentType: 'No Dues Certificate',
+      purpose: 'Job application requirement',
       requestDate: '2024-01-05',
       status: 'delivered',
-      approvedBy: 'Accounts Office',
+      approvedBy: 'Academic Office',
       deliveredDate: '2024-01-06',
       deliveryMethod: 'digital',
       urgency: 'normal',
@@ -126,7 +126,6 @@ const DocumentCenter: React.FC<DocumentCenterProps> = ({ studentData }) => {
     'Migration Certificate',
     'Degree Certificate',
     'Provisional Certificate',
-    'Fee Receipt',
     'No Dues Certificate',
     'Course Completion Certificate'
   ];
