@@ -1,82 +1,56 @@
-# SmartAttend Hub
+# SmartAttend Hub - Organized Project Structure
 
-Serverless attendance management system for colleges with faculty-linked biometric authentication, real-time analytics, and automated data persistence.
+## Project Organization
 
-## Features
+This project has been reorganized into a clean, modular structure:
 
-- **Faculty-Linked Attendance Engine** - Biometric authentication with 7-hour precision logic
-- **AI&DS Faculty Registry** - 14 faculty members with biometric IDs
-- **Real-time Analytics** - Live dashboard with attendance insights
-- **Serverless Architecture** - No backend server required
-- **Data Export** - Export attendance data to Excel
-- **Responsive Design** - Works on all devices
+```
+attendance/
+├── frontend/           # React frontend application
+│   ├── src/           # Source code
+│   ├── public/        # Static assets
+│   ├── package.json   # Frontend dependencies
+│   └── ...           # Frontend config files
+├── backend/           # Backend services and database
+│   ├── *.js          # Database scripts
+│   ├── *.ts          # TypeScript utilities
+│   ├── *.sql         # SQL migrations
+│   ├── .env          # Environment variables
+│   └── drizzle.config.ts
+├── docs/              # Documentation
+│   ├── README.md
+│   ├── DEPLOYMENT.md
+│   └── *.md          # All documentation files
+└── .gitignore
+```
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm or yarn
-- Neon DB account (serverless PostgreSQL)
-
-### Installation
-
-```sh
-# Clone the repository
-git clone <repository-url>
-
-# Navigate to project directory
-cd smart-attend-hub
-
-# Install dependencies
+### Frontend Development
+```bash
+cd frontend
 npm install
-
-# Configure environment variables
-cp .env.example .env
-# Add your Neon DB connection string
-
-# Start development server
 npm run dev
 ```
 
-## Technologies Used
+### Backend Setup
+```bash
+cd backend
+# Configure your .env file
+# Run database migrations
+```
 
-- **Frontend**: React 18 with TypeScript
-- **Database**: Neon DB (Serverless PostgreSQL)
-- **ORM**: Drizzle ORM
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **Build Tool**: Vite
-- **Charts**: Recharts
-- **Forms**: React Hook Form with Zod validation
+## Features
 
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
+- **Frontend**: React 18 with TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Serverless with Neon DB (PostgreSQL)
+- **Authentication**: Biometric and role-based access
+- **Real-time**: Live attendance monitoring
+- **Analytics**: Comprehensive reporting dashboard
 
 ## Architecture
 
-**Serverless Design** - No backend server required. Direct database operations through Drizzle ORM to Neon DB.
-
-## Project Structure
-
-```
-src/
-├── components/     # Reusable UI components
-├── pages/         # Application pages (Faculty, Attendance, Dashboard)
-├── contexts/      # React contexts
-├── hooks/         # Custom hooks
-├── lib/           # Database schema, faculty engine, utilities
-└── database/      # Migration scripts
-```
-
-## Database Schema
-
-- **faculty** - AI&DS department faculty with biometric IDs
-- **subjects** - Course subjects linked to faculty
-- **timetable** - Class schedules
-- **attendance_logs** - Individual attendance records
-- **faculty_sessions** - Session management
+- **Serverless Design**: No backend server required
+- **Direct Database Operations**: Through Drizzle ORM to Neon DB
+- **Role-based Access**: HOD, Faculty, and Student portals
+- **Responsive Design**: Works on all devices

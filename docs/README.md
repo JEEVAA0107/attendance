@@ -1,0 +1,82 @@
+# SmartAttend Hub
+
+Serverless attendance management system for colleges with faculty-linked biometric authentication, real-time analytics, and automated data persistence.
+
+## Features
+
+- **Faculty-Linked Attendance Engine** - Biometric authentication with 7-hour precision logic
+- **AI&DS Faculty Registry** - 14 faculty members with biometric IDs
+- **Real-time Analytics** - Live dashboard with attendance insights
+- **Serverless Architecture** - No backend server required
+- **Data Export** - Export attendance data to Excel
+- **Responsive Design** - Works on all devices
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm or yarn
+- Neon DB account (serverless PostgreSQL)
+
+### Installation
+
+```sh
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd smart-attend-hub
+
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Add your Neon DB connection string
+
+# Start development server
+npm run dev
+```
+
+## Technologies Used
+
+- **Frontend**: React 18 with TypeScript
+- **Database**: Neon DB (Serverless PostgreSQL)
+- **ORM**: Drizzle ORM
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Build Tool**: Vite
+- **Charts**: Recharts
+- **Forms**: React Hook Form with Zod validation
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## Architecture
+
+**Serverless Design** - No backend server required. Direct database operations through Drizzle ORM to Neon DB.
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable UI components
+├── pages/         # Application pages (Faculty, Attendance, Dashboard)
+├── contexts/      # React contexts
+├── hooks/         # Custom hooks
+├── lib/           # Database schema, faculty engine, utilities
+└── database/      # Migration scripts
+```
+
+## Database Schema
+
+- **faculty** - AI&DS department faculty with biometric IDs
+- **subjects** - Course subjects linked to faculty
+- **timetable** - Class schedules
+- **attendance_logs** - Individual attendance records
+- **faculty_sessions** - Session management

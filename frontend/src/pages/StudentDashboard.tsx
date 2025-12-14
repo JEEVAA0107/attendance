@@ -10,7 +10,15 @@ import {
   TrendingUp, 
   Clock,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Grid3X3,
+  Activity,
+  User,
+  Shield,
+  UserCheck,
+  BarChart3,
+  Users,
+  LogOut
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
@@ -23,10 +31,22 @@ interface StudentAttendance {
 }
 
 const StudentDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [activeSection, setActiveSection] = useState('overview');
   const [attendanceData, setAttendanceData] = useState<StudentAttendance[]>([]);
   const [overallAttendance, setOverallAttendance] = useState(0);
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
+
+  const navigationItems = [
+    { id: 'overview', label: 'Overview', icon: Grid3X3 },
+    { id: 'realtime', label: 'Real-Time', icon: Activity },
+    { id: 'faculty', label: 'Faculty', icon: User },
+    { id: 'surveillance', label: 'Faculty Surveillance', icon: Shield },
+    { id: 'monitoring', label: 'Student Monitoring', icon: UserCheck },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'events', label: 'Events', icon: Calendar },
+    { id: 'batches', label: 'Batches', icon: Users }
+  ];
 
   useEffect(() => {
     // Mock data - in real implementation, fetch from API
@@ -108,24 +128,19 @@ const StudentDashboard: React.FC = () => {
     { month: 'Jan', attendance: 79 }
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
-          </div>
-          <p className="text-gray-600">Welcome back, {user?.name}!</p>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary">{user?.role?.toUpperCase()}</Badge>
-            <Badge variant="outline">Roll: {user?.rollNumber || 'N/A'}</Badge>
-          </div>
+  const renderContent = () => {
+    if (activeSection !== 'overview') {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Content for {navigationItems.find(item => item.id === activeSection)?.label} coming soon...</p>
         </div>
+      );
+    }
 
+    return (
+      <div className="space-y-8">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -235,7 +250,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Attendance Trend */}
-        <Card className="mt-8">
+        <Card>
           <CardHeader>
             <CardTitle>Attendance Trend</CardTitle>
             <CardDescription>Your attendance percentage over the last 6 months</CardDescription>
@@ -252,6 +267,92 @@ const StudentDashboard: React.FC = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-80 bg-white shadow-lg flex flex-col">
+        {/* Logo/Header */}
+        <div className="p-6 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center">
+              <Grid3X3 className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">SmartAttend</h1>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 p-4">
+          <nav className="space-y-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t">
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 capitalize">
+                {navigationItems.find(item => item.id === activeSection)?.label || 'Overview'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Welcome back, {user?.name}! • Roll: {user?.rollNumber || 'N/A'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary">{user?.role?.toUpperCase()}</Badge>
+              <Badge 
+                className={`text-sm ${
+                  overallAttendance >= 75 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {overallAttendance.toFixed(1)}% Attendance
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 overflow-auto">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
