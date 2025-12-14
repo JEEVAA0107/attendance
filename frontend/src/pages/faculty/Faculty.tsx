@@ -5,16 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Mail, Building, Plus, Trash2 } from 'lucide-react';
+import { Users, Mail, Building, Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface FacultyMember {
-  name: string;
-  designation: string;
-  biometric_id: string;
-  department: string;
-  email: string;
-}
+import { api, FacultyMember } from '@/lib/api';
 
 const Faculty = () => {
   const { user } = useAuth();
@@ -22,28 +15,23 @@ const Faculty = () => {
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newFaculty, setNewFaculty] = useState({ name: '', designation: '', biometric_id: '', email: '' });
+  const [editingFaculty, setEditingFaculty] = useState<FacultyMember | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
 
   useEffect(() => {
-    // Static faculty data
-    const facultyData: FacultyMember[] = [
-      { name: "Dr. S. Ananth", designation: "HOD / Associate Professor", biometric_id: "10521", department: "AI&DS", email: "ananth@college.edu" },
-      { name: "Mrs. R. Mekala", designation: "Assistant Professor", biometric_id: "10528", department: "AI&DS", email: "mekala@college.edu" },
-      { name: "Mrs. M. Chitra", designation: "Assistant Professor", biometric_id: "10533", department: "AI&DS", email: "chitra@college.edu" },
-      { name: "Mrs. M. Nithiya", designation: "Assistant Professor", biometric_id: "10534", department: "AI&DS", email: "nithiya@college.edu" },
-      { name: "Mrs. P. Jayapriya", designation: "Assistant Professor", biometric_id: "10544", department: "AI&DS", email: "jayapriya@college.edu" },
-      { name: "Ms. P. Baby Priyadharshini", designation: "Assistant Professor", biometric_id: "13202", department: "AI&DS", email: "priyadharshini@college.edu" },
-      { name: "Mr. R. Sathishkumar", designation: "Assistant Professor", biometric_id: "10540", department: "AI&DS", email: "sathishkumar@college.edu" },
-      { name: "Mrs. L. S. Kavitha", designation: "Assistant Professor", biometric_id: "13201", department: "AI&DS", email: "kavitha@college.edu" },
-      { name: "Mr. K. Thangadurai", designation: "Assistant Professor", biometric_id: "13208", department: "AI&DS", email: "thangadurai@college.edu" },
-      { name: "Mrs. M. Gomathi", designation: "Assistant Professor", biometric_id: "13209", department: "AI&DS", email: "gomathi@college.edu" },
-      { name: "Mr. V. Aravindraj", designation: "Assistant Professor", biometric_id: "13207", department: "AI&DS", email: "aravindraj@college.edu" },
-      { name: "Mrs. K. Priyadharshini", designation: "Assistant Professor", biometric_id: "13204", department: "AI&DS", email: "priyadharshini.k@college.edu" },
-      { name: "Mrs. M. Suganthi", designation: "Assistant Professor", biometric_id: "13206", department: "AI&DS", email: "suganthi@college.edu" },
-      { name: "Mr. K. Rahmaan", designation: "Assistant Professor", biometric_id: "10546", department: "AI&DS", email: "rahmaan@college.edu" },
-    ];
+    const fetchFaculty = async () => {
+      try {
+        const facultyData = await api.getFaculty();
+        setFaculty(facultyData);
+      } catch (error) {
+        console.error('Failed to fetch faculty:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setFaculty(facultyData);
-    setLoading(false);
+    fetchFaculty();
   }, []);
 
   if (loading) {
@@ -54,16 +42,52 @@ const Faculty = () => {
     );
   }
 
-  const handleAddFaculty = () => {
+  const handleAddFaculty = async () => {
     if (newFaculty.name && newFaculty.designation && newFaculty.biometric_id && newFaculty.email) {
-      setFaculty([...faculty, { ...newFaculty, department: 'AI&DS' }]);
-      setNewFaculty({ name: '', designation: '', biometric_id: '', email: '' });
-      setShowAddDialog(false);
+      try {
+        const createdFaculty = await api.createFaculty({ ...newFaculty, department: 'AI&DS' });
+        setFaculty([...faculty, createdFaculty]);
+        setNewFaculty({ name: '', designation: '', biometric_id: '', email: '' });
+        setShowAddDialog(false);
+      } catch (error) {
+        console.error('Failed to add faculty:', error);
+      }
     }
   };
 
-  const handleRemoveFaculty = (index: number) => {
-    setFaculty(faculty.filter((_, i) => i !== index));
+  const handleEditFaculty = (member: FacultyMember) => {
+    setEditingFaculty(member);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateFaculty = async () => {
+    if (editingFaculty) {
+      try {
+        const updatedFaculty = await api.updateFaculty(editingFaculty.id, {
+          name: editingFaculty.name,
+          designation: editingFaculty.designation,
+          biometric_id: editingFaculty.biometric_id,
+          email: editingFaculty.email,
+          department: editingFaculty.department
+        });
+        setFaculty(faculty.map(f => f.id === editingFaculty.id ? updatedFaculty : f));
+        setShowEditDialog(false);
+        setEditingFaculty(null);
+      } catch (error) {
+        console.error('Failed to update faculty:', error);
+      }
+    }
+  };
+
+  const handleRemoveFaculty = async (id: string) => {
+    if (confirm('Are you sure you want to delete this faculty member?')) {
+      try {
+        await api.deleteFaculty(id);
+        setFaculty(faculty.filter(f => f.id !== id));
+      } catch (error) {
+        console.error('Failed to remove faculty:', error);
+      }
+    }
   };
 
   return (
@@ -174,13 +198,22 @@ const Faculty = () => {
                     Biometric Authentication Enabled
                   </div>
                   {user?.role === 'hod' && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveFaculty(index)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditFaculty(member)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveFaculty(member.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -188,6 +221,56 @@ const Faculty = () => {
           </Card>
         ))}
       </div>
+
+      {/* Edit Faculty Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Faculty</DialogTitle>
+            <DialogDescription>Update faculty member details</DialogDescription>
+          </DialogHeader>
+          {editingFaculty && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input 
+                  value={editingFaculty.name} 
+                  onChange={(e) => setEditingFaculty({...editingFaculty, name: e.target.value})} 
+                  placeholder="Enter faculty name" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Designation</Label>
+                <Input 
+                  value={editingFaculty.designation} 
+                  onChange={(e) => setEditingFaculty({...editingFaculty, designation: e.target.value})} 
+                  placeholder="e.g., Assistant Professor" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Biometric ID</Label>
+                <Input 
+                  value={editingFaculty.biometric_id} 
+                  onChange={(e) => setEditingFaculty({...editingFaculty, biometric_id: e.target.value})} 
+                  placeholder="Enter biometric ID" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input 
+                  value={editingFaculty.email} 
+                  onChange={(e) => setEditingFaculty({...editingFaculty, email: e.target.value})} 
+                  placeholder="Enter email address" 
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+            <Button onClick={handleUpdateFaculty}>Update Faculty</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

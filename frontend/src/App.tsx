@@ -13,6 +13,7 @@ import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentWorkspace from "./pages/student/StudentWorkspace";
 import HoDLogin from "./pages/hod/HoDLogin";
+import HoDLoginNew from "./pages/hod/HoDLoginNew";
 import FacultyLogin from "./pages/faculty/FacultyLogin";
 import StudentLogin from "./pages/StudentLogin";
 import Students from "./pages/hod/Students";
@@ -40,7 +41,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/login/hod" element={<HoDLogin />} />
+              <Route path="/login/hod" element={<HoDLoginNew />} />
+              <Route path="/login/hod/old" element={<HoDLogin />} />
               <Route path="/login/faculty" element={<FacultyLogin />} />
               <Route path="/login/student" element={<StudentLogin />} />
               <Route path="/signup" element={<Signup />} />

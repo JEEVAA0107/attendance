@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { UserCheck, ArrowLeft, Loader2 } from 'lucide-react';
+import { Shield, ArrowLeft, Loader2 } from 'lucide-react';
 
-const FacultyLogin: React.FC = () => {
-    const { loginFaculty } = useAuth();
+const HoDLoginNew: React.FC = () => {
+    const { loginHod } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
-    const [biometricId, setBiometricId] = useState('');
+    const [password, setPassword] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [loginResult, setLoginResult] = useState<{
         success: boolean;
@@ -23,10 +23,10 @@ const FacultyLogin: React.FC = () => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!email || !biometricId) {
+        if (!email || !password) {
             setLoginResult({
                 success: false,
-                message: 'Please enter both Name/Email and Biometric ID.'
+                message: 'Please enter both email and password.'
             });
             return;
         }
@@ -35,12 +35,12 @@ const FacultyLogin: React.FC = () => {
         setLoginResult(null);
 
         try {
-            const result = await loginFaculty(email, biometricId);
+            const result = await loginHod(email, password);
 
             if (result.success && result.user && result.redirectPath) {
                 setLoginResult({
                     success: true,
-                    message: `Welcome ${result.user.name}! Redirecting to Dashboard...`,
+                    message: `Welcome ${result.user.name}! Redirecting to HoD workspace...`,
                     user: result.user
                 });
 
@@ -67,58 +67,59 @@ const FacultyLogin: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
             <Card className="w-full max-w-md shadow-lg bg-white">
                 <CardHeader className="space-y-1 text-center">
-                    <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-                        <UserCheck className="h-6 w-6 text-blue-600" />
+                    <div className="mx-auto h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mb-4">
+                        <Shield className="h-6 w-6 text-purple-600" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-blue-900">Faculty Login</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-purple-900">HOD Login</CardTitle>
                     <CardDescription>
-                        Enter your Name/Email and Biometric ID to access the Dashboard
+                        Head of the Department - Enter your credentials to access the HOD Workspace
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Name or Email</Label>
+                            <Label htmlFor="email">Email or Name</Label>
                             <Input
                                 id="email"
                                 type="text"
-                                placeholder="Enter your name or email"
+                                placeholder="ananths@gmail.com or Ananth"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isProcessing}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="biometricId">Biometric ID</Label>
+                            <Label htmlFor="password">Password</Label>
                             <Input
-                                id="biometricId"
+                                id="password"
                                 type="password"
-                                placeholder="Enter your biometric ID"
-                                value={biometricId}
-                                onChange={(e) => setBiometricId(e.target.value)}
+                                placeholder="Enter your password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 disabled={isProcessing}
                             />
                         </div>
 
                         {loginResult && (
-                            <div className={`p-3 rounded-md text-sm ${loginResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                                }`}>
+                            <div className={`p-3 rounded-md text-sm ${
+                                loginResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                            }`}>
                                 {loginResult.message}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-purple-600 hover:bg-purple-700"
                             disabled={isProcessing}
                         >
                             {isProcessing ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Verifying...
+                                    Authenticating...
                                 </>
                             ) : (
-                                'Login to Dashboard'
+                                'Login to Workspace'
                             )}
                         </Button>
                     </form>
@@ -126,7 +127,7 @@ const FacultyLogin: React.FC = () => {
                 <CardFooter className="flex justify-center">
                     <Link
                         to="/"
-                        className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-2"
+                        className="text-sm text-gray-600 hover:text-purple-600 flex items-center gap-2"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Back to Home
@@ -137,4 +138,4 @@ const FacultyLogin: React.FC = () => {
     );
 };
 
-export default FacultyLogin;
+export default HoDLoginNew;

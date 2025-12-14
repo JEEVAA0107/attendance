@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { api } from '@/lib/api';
 
 interface AuthResult {
   success: boolean;
@@ -12,6 +13,8 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginHod: (email: string, password: string) => Promise<AuthResult>;
+  loginFaculty: (email: string, password: string) => Promise<AuthResult>;
   loginWithId: (name: string, id: string, role: 'student' | 'faculty' | 'hod') => Promise<AuthResult>;
   logout: () => void;
 }
@@ -44,6 +47,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('smartattend_user', JSON.stringify(mockUser));
     setUser(mockUser);
     setIsAuthenticated(true);
+  }, []);
+
+  const loginHod = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const response = await api.loginHod({ email, password });
+      
+      const hodUser = {
+        email,
+        uid: email,
+        role: 'hod',
+        name: 'Head of Department',
+        authId: email
+      };
+      
+      localStorage.setItem('smartattend_user', JSON.stringify(hodUser));
+      localStorage.setItem('smartattend_token', response.access_token);
+      setUser(hodUser);
+      setIsAuthenticated(true);
+      
+      return {
+        success: true,
+        user: { name: hodUser.name, role: 'hod', id: email },
+        redirectPath: '/hod-workspace'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed'
+      };
+    }
+  }, []);
+
+  const loginFaculty = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const response = await api.loginFaculty({ email, password });
+      
+      const facultyUser = {
+        email,
+        uid: email,
+        role: 'faculty',
+        name: 'Faculty Member',
+        authId: email
+      };
+      
+      localStorage.setItem('smartattend_user', JSON.stringify(facultyUser));
+      localStorage.setItem('smartattend_token', response.access_token);
+      setUser(facultyUser);
+      setIsAuthenticated(true);
+      
+      return {
+        success: true,
+        user: { name: facultyUser.name, role: 'faculty', id: email },
+        redirectPath: '/faculty-dashboard'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed'
+      };
+    }
   }, []);
 
   const loginWithId = useCallback(async (name: string, id: string, role: 'student' | 'faculty' | 'hod'): Promise<AuthResult> => {
@@ -87,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, loginWithId, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, loginHod, loginFaculty, loginWithId, logout }}>
       {children}
     </AuthContext.Provider>
   );
