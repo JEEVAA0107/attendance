@@ -40,3 +40,45 @@ def authenticate_hod(email_or_name: str, password: str):
     except Exception as e:
         print(f"Authentication error: {e}")
         return False
+
+def authenticate_faculty(email: str, password: str):
+    try:
+        result = supabase.table('users').select('*').eq('email', email).eq('role', 'faculty').execute()
+        if not result.data:
+            return False
+            
+        user = result.data[0]
+        if not verify_password(password, user['password']):
+            return False
+            
+        return user
+    except Exception as e:
+        print(f"Faculty authentication error: {e}")
+        return False
+
+def authenticate_student(email: str, password: str):
+    try:
+        result = supabase.table('users').select('*').eq('email', email).eq('role', 'student').execute()
+        if not result.data:
+            return False
+            
+        user = result.data[0]
+        if not verify_password(password, user['password']):
+            return False
+            
+        return user
+    except Exception as e:
+        print(f"Student authentication error: {e}")
+        return False
+
+def get_current_hod():
+    # JWT token validation for HOD
+    pass
+
+def get_current_faculty():
+    # JWT token validation for Faculty
+    pass
+
+def get_current_student():
+    # JWT token validation for Student
+    pass
