@@ -145,69 +145,158 @@ export class FacultyService {
 
     // Get all faculty members
     static async getAllFaculty(): Promise<FacultyData[]> {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return [...this.mockFaculty];
+        try {
+            const facultyData = await db.select({
+                id: faculty.id,
+                name: faculty.name,
+                email: faculty.email,
+                biometricId: faculty.biometricId,
+                designation: faculty.designation,
+                department: faculty.department
+            })
+            .from(faculty)
+            .orderBy(desc(faculty.createdAt));
+
+            return facultyData.map(f => ({ ...f, isActive: true }));
+        } catch (error) {
+            console.error('Error fetching faculty:', error);
+            return [];
+        }
     }
 
     // Create a new faculty member
     static async createFaculty(data: Omit<FacultyData, 'id' | 'isActive'>): Promise<{ success: boolean; error?: string }> {
-        await new Promise(resolve => setTimeout(resolve, 800));
+        try {
+            // Check for duplicate biometric ID in users table
+            const existingUser = await db.select().from(users).where(eq(users.biometricId, data.biometricId)).limit(1);
+            if (existingUser.length > 0) {
+                return { success: false, error: 'Faculty ID already exists.' };
+            }
 
-        // Check for duplicate ID
-        if (this.mockFaculty.some(f => f.biometricId === data.biometricId)) {
-            return { success: false, error: 'Faculty ID already exists (Mock).' };
+            // Check for duplicate email
+            const existingEmail = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
+            if (existingEmail.length > 0) {
+                return { success: false, error: 'Email already exists.' };
+            }
+
+            // Insert into users table first
+            const [newUser] = await db.insert(users).values({
+                email: data.email,
+                biometricId: data.biometricId,
+                role: 'faculty',
+                isActive: true
+            }).returning({ id: users.id });
+
+            // Insert into faculty table
+            await db.insert(faculty).values({
+                userId: newUser.id,
+                name: data.name,
+                designation: data.designation,
+                biometricId: data.biometricId,
+                department: data.department,
+                email: data.email,
+                isActive: true
+            });
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error creating faculty:', error);
+            return { success: false, error: 'Failed to create faculty member.' };
         }
-
-        const newId = Math.max(...this.mockFaculty.map(f => f.id)) + 1;
-        const newFacultyMember: FacultyData = {
-            id: newId,
-            ...data,
-            isActive: true
-        };
-
-        this.mockFaculty.unshift(newFacultyMember);
-        return { success: true };
     }
 
     // Toggle faculty active status
     static async toggleFacultyStatus(biometricId: string, isActive: boolean): Promise<boolean> {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        try {
+            // Update both users and faculty tables
+            await db.update(users)
+                .set({ isActive })
+                .where(eq(users.biometricId, biometricId));
 
-        const faculty = this.mockFaculty.find(f => f.biometricId === biometricId);
-        if (faculty) {
-            faculty.isActive = isActive;
+            await db.update(faculty)
+                .set({ isActive })
+                .where(eq(faculty.biometricId, biometricId));
+
             return true;
+        } catch (error) {
+            console.error('Error updating faculty status:', error);
+            return false;
         }
-        return false;
     }
 
     // Update faculty member
     static async updateFaculty(biometricId: string, data: Partial<Pick<FacultyData, 'name' | 'email' | 'designation' | 'department'>>): Promise<{ success: boolean; error?: string }> {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+            // Update users table if email is provided
+            if (data.email) {
+                await db.update(users)
+                    .set({ email: data.email })
+                    .where(eq(users.biometricId, biometricId));
+            }
 
-        const facultyIndex = this.mockFaculty.findIndex(f => f.biometricId === biometricId);
-        if (facultyIndex === -1) {
-            return { success: false, error: 'Faculty not found' };
+            // Update faculty table
+            await db.update(faculty)
+                .set({
+                    ...(data.name && { name: data.name }),
+                    ...(data.email && { email: data.email }),
+                    ...(data.designation && { designation: data.designation }),
+                    ...(data.department && { department: data.department })
+                })
+                .where(eq(faculty.biometricId, biometricId));
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error updating faculty:', error);
+            return { success: false, error: 'Failed to update faculty member.' };
         }
-
-        this.mockFaculty[facultyIndex] = {
-            ...this.mockFaculty[facultyIndex],
-            ...data
-        };
-        return { success: true };
     }
 
+    // Authenticate faculty member
+    static async authenticateFaculty(nameOrEmail: string, biometricId: string): Promise<{ success: boolean; faculty?: FacultyData; error?: string }> {
+        try {
+            const facultyData = await db.select({
+                id: faculty.id,
+                name: faculty.name,
+                email: faculty.email,
+                biometricId: faculty.biometricId,
+                designation: faculty.designation,
+                department: faculty.department
+            })
+            .from(faculty)
+            .where(eq(faculty.biometricId, biometricId))
+            .limit(1);
+
+            if (facultyData.length === 0) {
+                return { success: false, error: 'Invalid biometric ID.' };
+            }
+
+            const facultyMember = facultyData[0];
+
+            // Check if name or email matches
+            const nameMatch = facultyMember.name?.toLowerCase().includes(nameOrEmail.toLowerCase()) || false;
+            const emailMatch = facultyMember.email?.toLowerCase() === nameOrEmail.toLowerCase() || false;
+
+            if (!nameMatch && !emailMatch) {
+                return { success: false, error: 'Name/Email does not match.' };
+            }
+
+            return { success: true, faculty: { ...facultyMember, isActive: true } };
+        } catch (error) {
+            console.error('Error authenticating faculty:', error);
+            return { success: false, error: 'Authentication failed.' };
+        }
+    }
     // Delete faculty member
     static async deleteFaculty(biometricId: string): Promise<{ success: boolean; error?: string }> {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+            // Delete from faculty table (cascade will handle users table)
+            const result = await db.delete(faculty)
+                .where(eq(faculty.biometricId, biometricId));
 
-        const facultyIndex = this.mockFaculty.findIndex(f => f.biometricId === biometricId);
-        if (facultyIndex === -1) {
-            return { success: false, error: 'Faculty not found' };
+            return { success: true };
+        } catch (error) {
+            console.error('Error deleting faculty:', error);
+            return { success: false, error: 'Failed to delete faculty member.' };
         }
-
-        this.mockFaculty.splice(facultyIndex, 1);
-        return { success: true };
     }
 }

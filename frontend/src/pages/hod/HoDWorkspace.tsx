@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
-  BarChart3,
   Settings,
   Download,
   AlertTriangle,
@@ -20,13 +19,10 @@ import {
   LogOut,
   Upload
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 // Components
 import DepartmentStats from '@/components/hod/DepartmentStats';
-import RealTimeMonitor from '@/components/hod/RealTimeMonitor';
 import FacultySurveillance from '@/components/hod/FacultySurveillance';
-import StudentMonitoring from '@/components/hod/StudentMonitoring';
 import FacultyManagement from '@/components/hod/FacultyManagement';
 import StudentManagement from '@/components/hod/StudentManagement';
 import EventsManagement from '@/components/hod/EventsManagement';
@@ -56,23 +52,6 @@ const HoDWorkspace: React.FC = memo(() => {
     completedClasses: 6,
     alertsCount: 3
   }), []);
-
-  const attendanceTrend = useMemo(() => [
-    { month: 'Aug', faculty: 92, students: 85 },
-    { month: 'Sep', faculty: 89, students: 82 },
-    { month: 'Oct', faculty: 94, students: 78 },
-    { month: 'Nov', faculty: 91, students: 80 },
-    { month: 'Dec', faculty: 88, students: 76 },
-    { month: 'Jan', faculty: 93, students: 79 }
-  ], []);
-
-  const subjectPerformance = useMemo(() => [
-    { subject: 'AI/ML', attendance: 82 },
-    { subject: 'DSA', attendance: 75 },
-    { subject: 'DBMS', attendance: 88 },
-    { subject: 'OS', attendance: 71 },
-    { subject: 'CN', attendance: 79 }
-  ], []);
 
   return (
     <Layout>
@@ -265,30 +244,8 @@ const HoDWorkspace: React.FC = memo(() => {
             </div>
           )}
 
-          {/* Real-Time Monitor Tab */}
-          {activeTab === 'realtime' && <RealTimeMonitor />}
-
-          {/* Faculty Surveillance Tab */}
+          {/* Faculty Management Tab */}
           {activeTab === 'faculty' && <FacultySurveillance />}
-
-          {/* Student Monitoring Tab */}
-          {activeTab === 'students' && <StudentMonitoring />}
-
-          {/* Analytics Tab (Placeholder for Phase 2) */}
-          {activeTab === 'analytics' && (
-            <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Advanced Analytics</CardTitle>
-                <CardDescription>Detailed reports and predictive insights (Coming Soon)</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center h-64 text-gray-500">
-                <BarChart3 className="h-16 w-16 mb-4 opacity-20" />
-                <p>Advanced analytics module is under development.</p>
-              </CardContent>
-            </Card>
-            </div>
-          )}
 
           {/* Events Tab */}
           {activeTab === 'events' && <EventsManagement />}

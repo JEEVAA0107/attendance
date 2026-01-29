@@ -6,6 +6,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   biometricId: varchar('biometric_id', { length: 50 }).unique(),
   role: varchar('role', { length: 20 }).notNull(), // 'student', 'faculty', 'hod', 'admin'
+  profileImage: text('profile_image'), // Store image URL or base64
   isActive: boolean('is_active').default(true),
   lastLogin: timestamp('last_login'),
   createdAt: timestamp('created_at').defaultNow(),

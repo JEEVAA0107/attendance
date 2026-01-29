@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { FacultyService } from '@/lib/facultyService';
 
 interface AuthResult {
   success: boolean;
@@ -28,14 +29,20 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<{ email: string; uid: string; role?: string; name?: string; authId?: string } | null>(() => {
-    const saved = localStorage.getItem('smartattend_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [loading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('smartattend_user') !== null;
-  });
+  const [user, setUser] = useState<{ email: string; uid: string; role?: string; name?: string; authId?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Initialize auth state from localStorage
+  useEffect(() => {
+    const savedUser = localStorage.getItem('smartattend_user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setIsAuthenticated(true);
+    }
+    setLoading(false);
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const mockUser = {
@@ -79,26 +86,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const loginFaculty = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+  const loginFaculty = useCallback(async (nameOrEmail: string, biometricId: string): Promise<AuthResult> => {
     try {
-      const response = await api.loginFaculty({ email, password });
+      const result = await FacultyService.authenticateFaculty(nameOrEmail, biometricId);
+      
+      if (!result.success || !result.faculty) {
+        return {
+          success: false,
+          error: result.error || 'Authentication failed'
+        };
+      }
       
       const facultyUser = {
-        email,
-        uid: email,
+        email: result.faculty.email,
+        uid: result.faculty.biometricId,
         role: 'faculty',
-        name: 'Faculty Member',
-        authId: email
+        name: result.faculty.name,
+        authId: result.faculty.biometricId
       };
       
       localStorage.setItem('smartattend_user', JSON.stringify(facultyUser));
-      localStorage.setItem('smartattend_token', response.access_token);
       setUser(facultyUser);
       setIsAuthenticated(true);
       
       return {
         success: true,
-        user: { name: facultyUser.name, role: 'faculty', id: email },
+        user: { name: result.faculty.name, role: 'faculty', id: result.faculty.biometricId },
         redirectPath: '/faculty-dashboard'
       };
     } catch (error) {
@@ -145,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     localStorage.removeItem('smartattend_user');
+    localStorage.removeItem('smartattend_token');
     setUser(null);
     setIsAuthenticated(false);
   }, []);

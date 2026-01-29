@@ -1,6 +1,15 @@
 from pydantic import BaseModel
 from typing import Optional
 
+class Faculty(BaseModel):
+    id: str
+    name: str
+    designation: str
+    biometric_id: str
+    department: str
+    email: str
+    created_at: str
+
 class FacultyCreate(BaseModel):
     name: str
     designation: str

@@ -9,10 +9,7 @@ interface HoDNavbarProps {
 const HoDNavbar: React.FC<HoDNavbarProps> = ({ activeTab, onTabChange }) => {
   const navItems = [
     { id: 'overview', label: 'Overview' },
-    { id: 'realtime', label: 'Real-Time' },
-    { id: 'faculty', label: 'Faculty Surveillance' },
-    { id: 'students', label: 'Student Monitoring' },
-    { id: 'analytics', label: 'Analytics' },
+    { id: 'faculty', label: 'Faculty Management' },
     { id: 'events', label: 'Events' },
     { id: 'admin', label: 'Admin' }
   ];

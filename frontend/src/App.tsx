@@ -22,8 +22,6 @@ import Timetable from "./pages/Timetable";
 import ManageStudents from "./pages/hod/ManageStudents";
 import Faculty from "./pages/faculty/Faculty";
 import Attendance from "./pages/Attendance";
-import Analytics from "./pages/hod/Analytics";
-import StudentAnalytics from "./pages/hod/StudentAnalytics";
 import DataExport from "./pages/DataExport";
 import Settings from "./pages/Settings";
 import FacultyDirectory from "./pages/faculty/FacultyDirectory";
@@ -166,28 +164,6 @@ const App = () => (
                   <ProtectedRoute>
                     <Layout>
                       <Attendance />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/analytics"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Analytics />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/student-analytics/:studentId"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <StudentAnalytics />
                     </Layout>
                   </ProtectedRoute>
                 }

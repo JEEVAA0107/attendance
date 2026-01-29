@@ -80,19 +80,3 @@ async def delete_student(
 ):
     # Delete student
     pass
-
-# Analytics Endpoints
-@router.get("/analytics/department")
-async def get_department_analytics(current_hod: HOD = Depends(get_current_hod)):
-    # Department-wide analytics
-    pass
-
-@router.get("/analytics/attendance")
-async def get_attendance_analytics(current_hod: HOD = Depends(get_current_hod)):
-    # Attendance analytics
-    pass
-
-@router.get("/surveillance/real-time")
-async def get_real_time_surveillance(current_hod: HOD = Depends(get_current_hod)):
-    # Real-time monitoring
-    pass

@@ -28,11 +28,8 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     if (user?.role === 'hod') {
       return [
         { path: '/hod-workspace?tab=overview', label: 'Overview', icon: LayoutDashboard },
-        { path: '/hod-workspace?tab=realtime', label: 'Real-Time', icon: Activity },
         { path: '/faculty', label: 'Faculty', icon: Users },
         { path: '/hod-workspace?tab=faculty', label: 'Faculty Surveillance', icon: Shield },
-        { path: '/hod-workspace?tab=students', label: 'Student Monitoring', icon: Users },
-        { path: '/hod-workspace?tab=analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/hod-workspace?tab=events', label: 'Events', icon: CalendarDays },
         { path: '/hod-workspace?tab=batches', label: 'Batches', icon: GraduationCap },
       ];
@@ -52,7 +49,6 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     }
 
     baseLinks.push(
-      { path: '/analytics', label: 'Analytics', icon: BarChart3 },
       { path: '/export', label: 'Data Export', icon: Download }
     );
 
