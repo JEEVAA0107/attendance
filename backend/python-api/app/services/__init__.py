@@ -13,6 +13,7 @@ from app.services.faculty_service import FacultyService
 from app.services.student_service import StudentService
 from app.services.notification_service import NotificationService
 from app.services.analytics_service import AnalyticsService
+from app.services.ml_service import MLService
 
 __all__ = [
     # Auth
@@ -23,5 +24,5 @@ __all__ = [
     "RolePermission",
     # Services
     "HODService", "FacultyService", "StudentService",
-    "NotificationService", "AnalyticsService"
+    "NotificationService", "AnalyticsService", "MLService"
 ]

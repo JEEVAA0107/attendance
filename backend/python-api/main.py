@@ -14,6 +14,8 @@ from app.api.faculty import router as faculty_router
 from app.api.student import router as student_router
 from app.api.attendance import router as attendance_router
 from app.api.analytics import router as analytics_router
+from app.api.ai import router as ai_router
+from app.api.webhooks import router as webhooks_router
 
 # Import database
 from app.database import init_db
@@ -114,6 +116,20 @@ app.include_router(
     analytics_router, 
     prefix="/api/analytics", 
     tags=["📊 Analytics"]
+)
+
+# AI/ML Features
+app.include_router(
+    ai_router, 
+    prefix="/api/ai", 
+    tags=["🤖 AI/ML"]
+)
+
+# n8n Webhooks
+app.include_router(
+    webhooks_router, 
+    prefix="/api/webhooks", 
+    tags=["🔗 Webhooks"]
 )
 
 # ============================================

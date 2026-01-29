@@ -1,0 +1,136 @@
+{
+    "name": "SmartAttend - Daily Report",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 24,
+                            "triggerAtHour": 18
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{$env.SMARTATTEND_API_URL}}/api/webhooks/data/daily-summary",
+                "options": {}
+            },
+            "name": "Fetch Daily Summary",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{$env.SMARTATTEND_API_URL}}/api/webhooks/data/low-attendance-students",
+                "options": {}
+            },
+            "name": "Fetch Low Attendance",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "// Generate HTML report\nconst summary = $('Fetch Daily Summary').first().json;\nconst lowAttendance = $('Fetch Low Attendance').first().json;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 20px; }\n    h1 { color: #1a365d; }\n    .stat-box { display: inline-block; padding: 15px; margin: 10px; background: #f0f4f8; border-radius: 8px; }\n    .stat-value { font-size: 24px; font-weight: bold; color: #2b6cb0; }\n    table { width: 100%; border-collapse: collapse; margin-top: 20px; }\n    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }\n    th { background: #2b6cb0; color: white; }\n    .critical { background: #fed7d7; }\n  </style>\n</head>\n<body>\n  <h1>📊 Daily Attendance Report - ${summary.date}</h1>\n  \n  <div class=\"stat-box\">\n    <div>Total Classes</div>\n    <div class=\"stat-value\">${summary.total_classes}</div>\n  </div>\n  <div class=\"stat-box\">\n    <div>Present</div>\n    <div class=\"stat-value\">${summary.total_present}</div>\n  </div>\n  <div class=\"stat-box\">\n    <div>Absent</div>\n    <div class=\"stat-value\">${summary.total_absent}</div>\n  </div>\n  <div class=\"stat-box\">\n    <div>Average Rate</div>\n    <div class=\"stat-value\">${summary.average_attendance_rate}%</div>\n  </div>\n  \n  <h2>⚠️ Students Below 75% Attendance (${lowAttendance.count})</h2>\n  <table>\n    <tr><th>Name</th><th>Roll</th><th>Subject</th><th>Attendance</th></tr>\n    ${lowAttendance.students.slice(0, 20).map(s => \n      `<tr class=\"${s.attendance_percentage < 60 ? 'critical' : ''}\"><td>${s.student_name}</td><td>${s.roll_number}</td><td>${s.subject_name}</td><td>${s.attendance_percentage}%</td></tr>`\n    ).join('')}\n  </table>\n</body>\n</html>\n`;\n\nreturn [{ json: { html, summary, lowAttendance } }];"
+            },
+            "name": "Generate Report",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{$env.SMTP_FROM}}",
+                "toEmail": "={{$env.HOD_EMAIL}}",
+                "subject": "📊 Daily Attendance Report - {{ $now.format('yyyy-MM-dd') }}",
+                "emailType": "html",
+                "html": "={{ $json.html }}"
+            },
+            "name": "Send Email",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                940,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Daily Summary",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Low Attendance",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Daily Summary": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Low Attendance": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

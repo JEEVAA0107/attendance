@@ -1,0 +1,183 @@
+{
+    "name": "SmartAttend - SMS Queue Processor",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 5
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{$env.SMARTATTEND_API_URL}}/api/webhooks/data/sms-queue",
+                "options": {}
+            },
+            "name": "Fetch SMS Queue",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.count }}",
+                            "operation": "larger",
+                            "value2": 0
+                        }
+                    ]
+                }
+            },
+            "name": "Has Messages?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "messages",
+                "options": {}
+            },
+            "name": "Split Messages",
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                900,
+                280
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "send",
+                "from": "={{$env.TWILIO_PHONE}}",
+                "to": "={{ $json.phone_number }}",
+                "message": "={{ $json.message }}"
+            },
+            "name": "Send SMS",
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                280
+            ],
+            "credentials": {
+                "twilioApi": {
+                    "id": "TWILIO_CREDENTIAL_ID",
+                    "name": "Twilio account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "PUT",
+                "url": "={{$env.SMARTATTEND_API_URL}}/api/webhooks/data/sms-queue/{{ $json.id }}/sent",
+                "options": {}
+            },
+            "name": "Mark as Sent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1340,
+                280
+            ]
+        },
+        {
+            "parameters": {},
+            "name": "No Messages",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                900,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch SMS Queue",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch SMS Queue": {
+            "main": [
+                [
+                    {
+                        "node": "Has Messages?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Messages?": {
+            "main": [
+                [
+                    {
+                        "node": "Split Messages",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Messages",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Messages": {
+            "main": [
+                [
+                    {
+                        "node": "Send SMS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send SMS": {
+            "main": [
+                [
+                    {
+                        "node": "Mark as Sent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}
