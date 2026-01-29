@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Shield, Users, BookOpen, Calendar, BarChart3, Download, X, Clock, CalendarDays, Activity, GraduationCap } from 'lucide-react';
+import { LogOut, LayoutDashboard, Shield, Users, BookOpen, Calendar, BarChart3, X, CalendarDays, Activity, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 
@@ -36,21 +36,11 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     }
 
     const baseLinks = [
-      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/students', label: 'Students', icon: Users },
       { path: '/subjects', label: 'Subjects', icon: BookOpen },
-      { path: '/timetable', label: 'Timetable', icon: Clock },
       { path: '/faculty', label: 'Faculty', icon: Shield },
       { path: '/attendance', label: 'Attendance', icon: Calendar },
     ];
-
-    if (user?.role === 'faculty') {
-      baseLinks.push({ path: '/events', label: 'Events', icon: CalendarDays });
-    }
-
-    baseLinks.push(
-      { path: '/export', label: 'Data Export', icon: Download }
-    );
 
     return baseLinks;
   }, [user?.role]);

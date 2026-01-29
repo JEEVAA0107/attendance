@@ -48,7 +48,7 @@ const App = () => (
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['hod']}>
                     <Layout>
                       <MockDashboard />
                     </Layout>
@@ -139,7 +139,7 @@ const App = () => (
               <Route
                 path="/timetable"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['hod']}>
                     <Layout>
                       <Timetable />
                     </Layout>
@@ -172,7 +172,7 @@ const App = () => (
               <Route
                 path="/export"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['hod']}>
                     <Layout>
                       <DataExport />
                     </Layout>
@@ -194,7 +194,7 @@ const App = () => (
               <Route
                 path="/events"
                 element={
-                  <ProtectedRoute allowedRoles={['faculty']}>
+                  <ProtectedRoute allowedRoles={['hod']}>
                     <Layout>
                       <Events />
                     </Layout>
