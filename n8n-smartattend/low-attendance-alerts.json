@@ -1,0 +1,228 @@
+{
+    "name": "SmartAttend - Low Attendance Alerts",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "low-attendance-alert",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "low-attendance-alert"
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Validate required fields\nif (!body.student_id || !body.student_name) {\n  throw new Error('Missing required fields: student_id, student_name');\n}\n\n// Format phone number (ensure +country code)\nlet parentPhone = body.parent_phone || '';\nif (parentPhone && !parentPhone.startsWith('+')) {\n  parentPhone = '+91' + parentPhone; // Default to India\n}\n\n// Generate SMS message\nconst smsMessage = `SmartAttend Alert: ${body.student_name}'s attendance in ${body.subject_name || 'class'} has dropped to ${body.attendance_percentage?.toFixed(1) || 0}%. Please contact the school immediately.`;\n\n// Generate in-app notification\nconst notification = {\n  title: 'Low Attendance Alert',\n  message: `Your attendance in ${body.subject_name || 'class'} is ${body.attendance_percentage?.toFixed(1) || 0}%. Please improve your attendance to avoid academic issues.`,\n  type: 'warning',\n  priority: 'high'\n};\n\nreturn [{\n  json: {\n    ...body,\n    formatted_phone: parentPhone,\n    sms_message: smsMessage,\n    notification: notification,\n    should_send_sms: !!parentPhone,\n    processed_at: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "process-data",
+            "name": "Process Alert Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.should_send_sms }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-sms",
+            "name": "Has Parent Phone?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "send",
+                "from": "={{ $env.TWILIO_PHONE }}",
+                "to": "={{ $json.formatted_phone }}",
+                "message": "={{ $json.sms_message }}"
+            },
+            "id": "send-parent-sms",
+            "name": "Send SMS to Parent",
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                920,
+                200
+            ],
+            "credentials": {
+                "twilioApi": {
+                    "id": "TWILIO_CREDENTIAL_ID",
+                    "name": "Twilio Account"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/webhooks/low-attendance-alert",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"student_id\": \"{{ $json.student_id }}\",\n  \"student_name\": \"{{ $json.student_name }}\",\n  \"subject_name\": \"{{ $json.subject_name }}\",\n  \"attendance_percentage\": {{ $json.attendance_percentage }},\n  \"parent_phone\": \"{{ $json.parent_phone }}\"\n}",
+                "options": {
+                    "timeout": 10000
+                }
+            },
+            "id": "create-notification",
+            "name": "Create In-App Notification",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                920,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const input = $input.all();\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Low attendance alert processed',\n    sms_sent: input.some(i => i.json.sid), // Twilio returns sid on success\n    notification_created: true,\n    timestamp: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "merge-results",
+            "name": "Merge Results",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1160,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json }}",
+                "options": {}
+            },
+            "id": "respond-webhook",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1380,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Process Alert Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Alert Data": {
+            "main": [
+                [
+                    {
+                        "node": "Has Parent Phone?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Parent Phone?": {
+            "main": [
+                [
+                    {
+                        "node": "Send SMS to Parent",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Create In-App Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Create In-App Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send SMS to Parent": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create In-App Notification": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Results": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "SmartAttend",
+            "createdAt": "2024-01-01T00:00:00.000Z",
+            "updatedAt": "2024-01-01T00:00:00.000Z"
+        }
+    ]
+}

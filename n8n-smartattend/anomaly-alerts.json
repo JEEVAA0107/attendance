@@ -1,0 +1,187 @@
+{
+    "name": "SmartAttend - AI Anomaly Alerts",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 17 * * 1-5"
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Daily at 5 PM (Mon-Fri)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/ai/anomalies",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-anomalies",
+            "name": "Fetch Detected Anomalies",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.anomalies?.length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "has-anomalies",
+            "name": "Has Anomalies?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const data = $input.first().json;\nconst anomalies = data.anomalies || [];\n\n// Group by severity\nconst critical = anomalies.filter(a => a.severity === 'critical');\nconst high = anomalies.filter(a => a.severity === 'high');\nconst medium = anomalies.filter(a => a.severity === 'medium');\n\nconst today = new Date().toLocaleDateString('en-IN', {\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body {\n      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n      margin: 0;\n      padding: 20px;\n      background: #f5f7fa;\n    }\n    .container {\n      max-width: 700px;\n      margin: 0 auto;\n      background: white;\n      border-radius: 16px;\n      box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n      overflow: hidden;\n    }\n    .header {\n      background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);\n      color: white;\n      padding: 30px;\n      text-align: center;\n    }\n    .header h1 {\n      margin: 0 0 10px;\n      font-size: 24px;\n    }\n    .content {\n      padding: 30px;\n    }\n    .summary-grid {\n      display: grid;\n      grid-template-columns: repeat(3, 1fr);\n      gap: 15px;\n      margin-bottom: 30px;\n    }\n    .summary-card {\n      padding: 20px;\n      border-radius: 10px;\n      text-align: center;\n    }\n    .summary-card.critical {\n      background: #fee2e2;\n      border: 2px solid #dc2626;\n    }\n    .summary-card.high {\n      background: #fef3c7;\n      border: 2px solid #d97706;\n    }\n    .summary-card.medium {\n      background: #dbeafe;\n      border: 2px solid #2563eb;\n    }\n    .summary-value {\n      font-size: 32px;\n      font-weight: bold;\n    }\n    .summary-card.critical .summary-value { color: #dc2626; }\n    .summary-card.high .summary-value { color: #d97706; }\n    .summary-card.medium .summary-value { color: #2563eb; }\n    .anomaly-item {\n      background: #f8f9fa;\n      border-radius: 10px;\n      padding: 20px;\n      margin: 15px 0;\n      border-left: 4px solid #dc2626;\n    }\n    .anomaly-item.high {\n      border-color: #d97706;\n    }\n    .anomaly-item.medium {\n      border-color: #2563eb;\n    }\n    .anomaly-title {\n      font-weight: 600;\n      font-size: 16px;\n      margin-bottom: 8px;\n    }\n    .anomaly-details {\n      color: #666;\n      font-size: 14px;\n    }\n    .badge {\n      display: inline-block;\n      padding: 4px 10px;\n      border-radius: 20px;\n      font-size: 12px;\n      font-weight: 600;\n      margin-left: 10px;\n    }\n    .badge.critical { background: #dc2626; color: white; }\n    .badge.high { background: #d97706; color: white; }\n    .badge.medium { background: #2563eb; color: white; }\n    .footer {\n      background: #f8f9fa;\n      padding: 20px;\n      text-align: center;\n      color: #666;\n      font-size: 12px;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🚨 AI Anomaly Detection Alert</h1>\n      <p>${today}</p>\n    </div>\n    \n    <div class=\"content\">\n      <div class=\"summary-grid\">\n        <div class=\"summary-card critical\">\n          <div class=\"summary-value\">${critical.length}</div>\n          <div>Critical</div>\n        </div>\n        <div class=\"summary-card high\">\n          <div class=\"summary-value\">${high.length}</div>\n          <div>High</div>\n        </div>\n        <div class=\"summary-card medium\">\n          <div class=\"summary-value\">${medium.length}</div>\n          <div>Medium</div>\n        </div>\n      </div>\n      \n      <h3>Detected Anomalies</h3>\n      ${anomalies.slice(0, 10).map(a => `\n        <div class=\"anomaly-item ${a.severity}\">\n          <div class=\"anomaly-title\">\n            ${a.anomaly_type === 'sudden_drop' ? '📉' : '⚠️'} ${a.description || a.anomaly_type}\n            <span class=\"badge ${a.severity}\">${a.severity?.toUpperCase()}</span>\n          </div>\n          <div class=\"anomaly-details\">\n            ${a.student_name ? `Student: <strong>${a.student_name}</strong> | ` : ''}\n            ${a.class_name ? `Class: <strong>${a.class_name}</strong> | ` : ''}\n            ${a.expected_rate ? `Expected: ${a.expected_rate.toFixed(1)}% | Actual: ${a.actual_rate?.toFixed(1)}%` : ''}\n          </div>\n        </div>\n      `).join('')}\n      ${anomalies.length > 10 ? `<p style=\"color: #666;\">... and ${anomalies.length - 10} more anomalies</p>` : ''}\n    </div>\n    \n    <div class=\"footer\">\n      <p>AI-Powered Anomaly Detection | SmartAttend Hub</p>\n      <p>Please review these anomalies in the dashboard for detailed analysis.</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    html,\n    subject: `🚨 AI Alert: ${anomalies.length} Anomalies Detected - ${today}`,\n    anomaly_count: anomalies.length,\n    critical_count: critical.length,\n    anomalies\n  }\n}];"
+            },
+            "id": "generate-alert",
+            "name": "Generate Alert Email",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                220
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $env.SMTP_FROM || 'alerts@smartattend.com' }}",
+                "toEmail": "={{ $env.HOD_EMAIL }}",
+                "subject": "={{ $json.subject }}",
+                "emailType": "html",
+                "html": "={{ $json.html }}",
+                "options": {
+                    "priority": "high"
+                }
+            },
+            "id": "send-alert",
+            "name": "Send Alert Email",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1140,
+                220
+            ],
+            "credentials": {
+                "smtp": {
+                    "id": "SMTP_CREDENTIAL_ID",
+                    "name": "SMTP Account"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "id": "no-anomalies",
+            "name": "No Anomalies Today",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                900,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Daily at 5 PM (Mon-Fri)": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Detected Anomalies",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Detected Anomalies": {
+            "main": [
+                [
+                    {
+                        "node": "Has Anomalies?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Anomalies?": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Alert Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Anomalies Today",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Alert Email": {
+            "main": [
+                [
+                    {
+                        "node": "Send Alert Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "SmartAttend",
+            "createdAt": "2024-01-01T00:00:00.000Z",
+            "updatedAt": "2024-01-01T00:00:00.000Z"
+        }
+    ]
+}

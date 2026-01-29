@@ -1,0 +1,228 @@
+{
+    "name": "SmartAttend - Request Status Notifications",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "request-status",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Status Change Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "request-status"
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Determine notification content based on status\nconst isApproved = body.status === 'approved';\nconst emoji = isApproved ? '✅' : '❌';\nconst requestType = body.request_type === 'leave' ? 'Leave Request' : 'Attendance Correction';\n\n// Format phone number\nlet phone = body.parent_phone || '';\nif (phone && !phone.startsWith('+')) {\n  phone = '+91' + phone;\n}\n\n// SMS Message\nconst smsMessage = `${emoji} SmartAttend: Your ${requestType} has been ${body.status}${body.notes ? '. Note: ' + body.notes : ''}. - ${body.faculty_name || 'Faculty'}`;\n\n// In-app notification\nconst notification = {\n  title: `${requestType} ${isApproved ? 'Approved' : 'Rejected'}`,\n  message: body.notes || `Your ${requestType} has been ${body.status} by ${body.faculty_name || 'faculty'}.`,\n  type: isApproved ? 'success' : 'error',\n  priority: 'high'\n};\n\nreturn [{\n  json: {\n    ...body,\n    formatted_phone: phone,\n    sms_message: smsMessage,\n    notification: notification,\n    should_send_sms: !!phone,\n    is_approved: isApproved,\n    processed_at: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "process-status",
+            "name": "Process Status Update",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.should_send_sms }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-sms",
+            "name": "Has Phone Number?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "send",
+                "from": "={{ $env.TWILIO_PHONE }}",
+                "to": "={{ $json.formatted_phone }}",
+                "message": "={{ $json.sms_message }}"
+            },
+            "id": "send-sms",
+            "name": "Send SMS Notification",
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                920,
+                200
+            ],
+            "credentials": {
+                "twilioApi": {
+                    "id": "TWILIO_CREDENTIAL_ID",
+                    "name": "Twilio Account"
+                }
+            },
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/webhooks/request-status",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"request_type\": \"{{ $json.request_type }}\",\n  \"request_id\": \"{{ $json.request_id }}\",\n  \"student_id\": \"{{ $json.student_id }}\",\n  \"student_name\": \"{{ $json.student_name }}\",\n  \"status\": \"{{ $json.status }}\",\n  \"faculty_name\": \"{{ $json.faculty_name }}\",\n  \"notes\": \"{{ $json.notes }}\"\n}",
+                "options": {
+                    "timeout": 10000
+                }
+            },
+            "id": "update-api",
+            "name": "Update via API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                920,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "return [{\n  json: {\n    status: 'success',\n    message: 'Request status notification processed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "merge-results",
+            "name": "Merge Results",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1160,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json }}",
+                "options": {}
+            },
+            "id": "respond-webhook",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1380,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Status Change Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Process Status Update",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Status Update": {
+            "main": [
+                [
+                    {
+                        "node": "Has Phone Number?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Phone Number?": {
+            "main": [
+                [
+                    {
+                        "node": "Send SMS Notification",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Update via API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Update via API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send SMS Notification": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update via API": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Results": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "SmartAttend",
+            "createdAt": "2024-01-01T00:00:00.000Z",
+            "updatedAt": "2024-01-01T00:00:00.000Z"
+        }
+    ]
+}

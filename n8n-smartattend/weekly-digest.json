@@ -1,0 +1,193 @@
+{
+    "name": "SmartAttend - Weekly Analytics Digest",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 9 * * 0"
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Every Sunday 9 AM",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/analytics/department/overview",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-overview",
+            "name": "Fetch Department Overview",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/analytics/department/trends?days=7",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-trends",
+            "name": "Fetch Weekly Trends",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/ai/risk-analysis?threshold=75",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-risk",
+            "name": "Fetch Risk Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                600
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const overview = $('Fetch Department Overview').first().json;\nconst trends = $('Fetch Weekly Trends').first().json;\nconst risk = $('Fetch Risk Analysis').first().json;\n\nconst weekStart = new Date();\nweekStart.setDate(weekStart.getDate() - 7);\nconst weekEnd = new Date();\n\nconst dateRange = `${weekStart.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}`;\n\n// Calculate week-over-week change\nconst avgRate = overview.average_attendance_rate || 0;\nconst prevWeekRate = overview.previous_week_rate || avgRate;\nconst changePercent = avgRate - prevWeekRate;\nconst changeEmoji = changePercent >= 0 ? '📈' : '📉';\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body {\n      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n      margin: 0;\n      padding: 20px;\n      background-color: #f5f7fa;\n    }\n    .container {\n      max-width: 800px;\n      margin: 0 auto;\n      background: white;\n      border-radius: 16px;\n      box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n      overflow: hidden;\n    }\n    .header {\n      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);\n      color: white;\n      padding: 40px;\n      text-align: center;\n    }\n    .header h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n    }\n    .header p {\n      margin: 0;\n      opacity: 0.9;\n      font-size: 16px;\n    }\n    .content {\n      padding: 40px;\n    }\n    .highlight-box {\n      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n      color: white;\n      border-radius: 12px;\n      padding: 30px;\n      text-align: center;\n      margin-bottom: 30px;\n    }\n    .highlight-value {\n      font-size: 48px;\n      font-weight: bold;\n    }\n    .highlight-label {\n      font-size: 16px;\n      margin-top: 5px;\n    }\n    .change-pill {\n      display: inline-block;\n      padding: 5px 12px;\n      border-radius: 20px;\n      background: rgba(255,255,255,0.2);\n      font-size: 14px;\n      margin-top: 10px;\n    }\n    .stats-grid {\n      display: grid;\n      grid-template-columns: repeat(3, 1fr);\n      gap: 20px;\n      margin: 30px 0;\n    }\n    .stat-card {\n      background: #f8f9fa;\n      border-radius: 12px;\n      padding: 25px;\n      text-align: center;\n    }\n    .stat-value {\n      font-size: 28px;\n      font-weight: bold;\n      color: #1e3a5f;\n    }\n    .stat-label {\n      color: #666;\n      font-size: 14px;\n      margin-top: 8px;\n    }\n    .section {\n      margin: 40px 0;\n    }\n    .section-title {\n      color: #1e3a5f;\n      font-size: 20px;\n      margin-bottom: 20px;\n      display: flex;\n      align-items: center;\n      gap: 10px;\n    }\n    table {\n      width: 100%;\n      border-collapse: collapse;\n    }\n    th, td {\n      padding: 15px;\n      text-align: left;\n      border-bottom: 1px solid #eee;\n    }\n    th {\n      background: #f8f9fa;\n      color: #1e3a5f;\n      font-weight: 600;\n    }\n    .risk-critical { color: #dc2626; font-weight: 600; }\n    .risk-high { color: #d97706; font-weight: 600; }\n    .risk-medium { color: #2563eb; }\n    .recommendation-card {\n      background: #fef3c7;\n      border-left: 4px solid #d97706;\n      padding: 15px 20px;\n      margin: 10px 0;\n      border-radius: 0 8px 8px 0;\n    }\n    .recommendation-card.urgent {\n      background: #fee2e2;\n      border-color: #dc2626;\n    }\n    .footer {\n      background: #f8f9fa;\n      padding: 30px;\n      text-align: center;\n      color: #666;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📊 Weekly Analytics Digest</h1>\n      <p>${dateRange}</p>\n    </div>\n    \n    <div class=\"content\">\n      <div class=\"highlight-box\">\n        <div class=\"highlight-value\">${avgRate.toFixed(1)}%</div>\n        <div class=\"highlight-label\">Average Weekly Attendance</div>\n        <div class=\"change-pill\">${changeEmoji} ${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}% vs last week</div>\n      </div>\n      \n      <div class=\"stats-grid\">\n        <div class=\"stat-card\">\n          <div class=\"stat-value\">${overview.total_faculty || 0}</div>\n          <div class=\"stat-label\">Faculty Members</div>\n        </div>\n        <div class=\"stat-card\">\n          <div class=\"stat-value\">${overview.total_students || 0}</div>\n          <div class=\"stat-label\">Total Students</div>\n        </div>\n        <div class=\"stat-card\">\n          <div class=\"stat-value\">${overview.total_classes || 0}</div>\n          <div class=\"stat-label\">Classes</div>\n        </div>\n      </div>\n      \n      ${risk.risk_summary ? `\n      <div class=\"section\">\n        <h3 class=\"section-title\">⚠️ At-Risk Students Summary</h3>\n        <div class=\"stats-grid\">\n          <div class=\"stat-card\">\n            <div class=\"stat-value risk-critical\">${risk.risk_summary.critical || 0}</div>\n            <div class=\"stat-label\">Critical (&lt;50%)</div>\n          </div>\n          <div class=\"stat-card\">\n            <div class=\"stat-value risk-high\">${risk.risk_summary.high || 0}</div>\n            <div class=\"stat-label\">High Risk (50-65%)</div>\n          </div>\n          <div class=\"stat-card\">\n            <div class=\"stat-value risk-medium\">${risk.risk_summary.medium || 0}</div>\n            <div class=\"stat-label\">Medium Risk (65-75%)</div>\n          </div>\n        </div>\n      </div>\n      ` : ''}\n      \n      ${risk.recommendations && risk.recommendations.length > 0 ? `\n      <div class=\"section\">\n        <h3 class=\"section-title\">💡 Recommendations</h3>\n        ${risk.recommendations.map(r => `\n          <div class=\"recommendation-card ${r.priority === 'urgent' ? 'urgent' : ''}\">\n            <strong>${r.action}</strong><br>\n            <small>${r.description}</small>\n          </div>\n        `).join('')}\n      </div>\n      ` : ''}\n      \n      ${risk.students && risk.students.length > 0 ? `\n      <div class=\"section\">\n        <h3 class=\"section-title\">👥 Students Requiring Attention (Top 10)</h3>\n        <table>\n          <tr>\n            <th>Name</th>\n            <th>Roll No</th>\n            <th>Lowest Subject</th>\n            <th>Risk Level</th>\n          </tr>\n          ${risk.students.slice(0, 10).map(s => `\n            <tr>\n              <td><strong>${s.name}</strong></td>\n              <td>${s.roll_number}</td>\n              <td>${s.lowest_percentage?.toFixed(1) || 0}%</td>\n              <td class=\"risk-${s.risk_level}\">${s.risk_level?.toUpperCase()}</td>\n            </tr>\n          `).join('')}\n        </table>\n      </div>\n      ` : ''}\n    </div>\n    \n    <div class=\"footer\">\n      <p><strong>SmartAttend Hub</strong> - Weekly Analytics Report</p>\n      <p>Generated: ${new Date().toLocaleString('en-IN')}</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    html,\n    subject: `📊 Weekly Analytics Digest - ${dateRange}`,\n    overview,\n    risk,\n    dateRange\n  }\n}];"
+            },
+            "id": "generate-digest",
+            "name": "Generate Weekly Digest",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $env.SMTP_FROM || 'noreply@smartattend.com' }}",
+                "toEmail": "={{ $env.HOD_EMAIL }}",
+                "subject": "={{ $json.subject }}",
+                "emailType": "html",
+                "html": "={{ $json.html }}",
+                "options": {}
+            },
+            "id": "send-email",
+            "name": "Send Weekly Email",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                940,
+                400
+            ],
+            "credentials": {
+                "smtp": {
+                    "id": "SMTP_CREDENTIAL_ID",
+                    "name": "SMTP Account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Every Sunday 9 AM": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Department Overview",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Weekly Trends",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Risk Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Department Overview": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Weekly Trends": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Risk Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Weekly Digest": {
+            "main": [
+                [
+                    {
+                        "node": "Send Weekly Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "SmartAttend",
+            "createdAt": "2024-01-01T00:00:00.000Z",
+            "updatedAt": "2024-01-01T00:00:00.000Z"
+        }
+    ]
+}

@@ -1,0 +1,203 @@
+{
+    "name": "SmartAttend - Daily Attendance Report",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 24,
+                            "triggerAtHour": 18
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/webhooks/data/daily-summary",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-summary",
+            "name": "Fetch Daily Summary",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SMARTATTEND_API_URL }}/webhooks/data/low-attendance-students?threshold={{ $env.ALERT_THRESHOLD || 75 }}",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "fetch-low-attendance",
+            "name": "Fetch Low Attendance Students",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "// Get data from both HTTP requests\nconst summary = $('Fetch Daily Summary').first().json;\nconst lowAttendance = $('Fetch Low Attendance Students').first().json;\n\n// Format date\nconst today = new Date().toLocaleDateString('en-IN', {\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\n// Generate HTML email template\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body {\n      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n      margin: 0;\n      padding: 20px;\n      background-color: #f5f7fa;\n    }\n    .container {\n      max-width: 700px;\n      margin: 0 auto;\n      background: white;\n      border-radius: 12px;\n      box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n      overflow: hidden;\n    }\n    .header {\n      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n      color: white;\n      padding: 30px;\n      text-align: center;\n    }\n    .header h1 {\n      margin: 0;\n      font-size: 24px;\n    }\n    .header p {\n      margin: 10px 0 0;\n      opacity: 0.9;\n    }\n    .content {\n      padding: 30px;\n    }\n    .stats-grid {\n      display: grid;\n      grid-template-columns: repeat(2, 1fr);\n      gap: 15px;\n      margin-bottom: 30px;\n    }\n    .stat-card {\n      background: #f8f9fa;\n      border-radius: 8px;\n      padding: 20px;\n      text-align: center;\n    }\n    .stat-value {\n      font-size: 32px;\n      font-weight: bold;\n      color: #667eea;\n    }\n    .stat-label {\n      color: #666;\n      font-size: 14px;\n      margin-top: 5px;\n    }\n    .section-title {\n      color: #333;\n      font-size: 18px;\n      margin: 25px 0 15px;\n      padding-bottom: 10px;\n      border-bottom: 2px solid #667eea;\n    }\n    table {\n      width: 100%;\n      border-collapse: collapse;\n      margin-top: 10px;\n    }\n    th, td {\n      padding: 12px;\n      text-align: left;\n      border-bottom: 1px solid #eee;\n    }\n    th {\n      background: #667eea;\n      color: white;\n      font-weight: 600;\n    }\n    tr:hover {\n      background: #f8f9fa;\n    }\n    .critical {\n      background: #fee2e2 !important;\n      color: #dc2626;\n    }\n    .warning {\n      background: #fef3c7 !important;\n      color: #d97706;\n    }\n    .footer {\n      background: #f8f9fa;\n      padding: 20px;\n      text-align: center;\n      color: #666;\n      font-size: 12px;\n    }\n    .badge {\n      display: inline-block;\n      padding: 4px 10px;\n      border-radius: 20px;\n      font-size: 12px;\n      font-weight: 600;\n    }\n    .badge-red { background: #fee2e2; color: #dc2626; }\n    .badge-yellow { background: #fef3c7; color: #d97706; }\n    .badge-green { background: #d1fae5; color: #059669; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📊 Daily Attendance Report</h1>\n      <p>${today}</p>\n    </div>\n    \n    <div class=\"content\">\n      <div class=\"stats-grid\">\n        <div class=\"stat-card\">\n          <div class=\"stat-value\">${summary.total_classes || 0}</div>\n          <div class=\"stat-label\">Total Classes</div>\n        </div>\n        <div class=\"stat-card\">\n          <div class=\"stat-value\">${summary.average_attendance_rate?.toFixed(1) || 0}%</div>\n          <div class=\"stat-label\">Attendance Rate</div>\n        </div>\n        <div class=\"stat-card\">\n          <div class=\"stat-value\" style=\"color: #059669;\">${summary.total_present || 0}</div>\n          <div class=\"stat-label\">Present</div>\n        </div>\n        <div class=\"stat-card\">\n          <div class=\"stat-value\" style=\"color: #dc2626;\">${summary.total_absent || 0}</div>\n          <div class=\"stat-label\">Absent</div>\n        </div>\n      </div>\n      \n      <h3 class=\"section-title\">⚠️ Students Below ${$env.ALERT_THRESHOLD || 75}% Attendance (${lowAttendance.count || 0})</h3>\n      \n      ${lowAttendance.students && lowAttendance.students.length > 0 ? `\n      <table>\n        <thead>\n          <tr>\n            <th>Name</th>\n            <th>Roll No</th>\n            <th>Subject</th>\n            <th>Attendance</th>\n          </tr>\n        </thead>\n        <tbody>\n          ${lowAttendance.students.slice(0, 20).map(s => {\n            const rowClass = s.attendance_percentage < 50 ? 'critical' : s.attendance_percentage < 65 ? 'warning' : '';\n            const badgeClass = s.attendance_percentage < 50 ? 'badge-red' : s.attendance_percentage < 65 ? 'badge-yellow' : 'badge-green';\n            return `\n            <tr class=\"${rowClass}\">\n              <td><strong>${s.student_name}</strong></td>\n              <td>${s.roll_number}</td>\n              <td>${s.subject_name || 'N/A'}</td>\n              <td><span class=\"badge ${badgeClass}\">${s.attendance_percentage?.toFixed(1)}%</span></td>\n            </tr>\n            `;\n          }).join('')}\n        </tbody>\n      </table>\n      ${lowAttendance.count > 20 ? `<p style=\"color: #666; font-size: 14px; margin-top: 10px;\">... and ${lowAttendance.count - 20} more students</p>` : ''}\n      ` : `<p style=\"color: #059669;\">✅ No students below threshold!</p>`}\n    </div>\n    \n    <div class=\"footer\">\n      <p>Generated by SmartAttend Hub | ${new Date().toISOString()}</p>\n      <p>This is an automated report. Do not reply to this email.</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\n// Generate plain text version\nconst plainText = `\nDaily Attendance Report - ${today}\n\n=== Summary ===\nTotal Classes: ${summary.total_classes || 0}\nAttendance Rate: ${summary.average_attendance_rate?.toFixed(1) || 0}%\nPresent: ${summary.total_present || 0}\nAbsent: ${summary.total_absent || 0}\n\n=== Low Attendance Students (${lowAttendance.count || 0}) ===\n${lowAttendance.students ? lowAttendance.students.slice(0, 10).map(s => \n  `- ${s.student_name} (${s.roll_number}): ${s.attendance_percentage?.toFixed(1)}% in ${s.subject_name}`\n).join('\\n') : 'No students below threshold'}\n\n---\nGenerated by SmartAttend Hub\n`;\n\nreturn [{ \n  json: { \n    html, \n    plainText,\n    summary,\n    lowAttendance,\n    date: today,\n    subject: `📊 Daily Attendance Report - ${summary.date || today}`\n  } \n}];"
+            },
+            "id": "generate-report",
+            "name": "Generate Email Report",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $env.SMTP_FROM || 'noreply@smartattend.com' }}",
+                "toEmail": "={{ $env.HOD_EMAIL }}",
+                "subject": "={{ $json.subject }}",
+                "emailType": "html",
+                "html": "={{ $json.html }}",
+                "options": {
+                    "attachmentsUi": {
+                        "attachmentsBinary": []
+                    }
+                }
+            },
+            "id": "send-email",
+            "name": "Send Email to HOD",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                940,
+                300
+            ],
+            "credentials": {
+                "smtp": {
+                    "id": "SMTP_CREDENTIAL_ID",
+                    "name": "SMTP Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "status",
+                            "value": "success"
+                        },
+                        {
+                            "name": "message",
+                            "value": "Daily report sent successfully"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "success-response",
+            "name": "Log Success",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1160,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Daily Summary",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Low Attendance Students",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Daily Summary": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Email Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Low Attendance Students": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Email Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Email Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send Email to HOD",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Email to HOD": {
+            "main": [
+                [
+                    {
+                        "node": "Log Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "SmartAttend",
+            "createdAt": "2024-01-01T00:00:00.000Z",
+            "updatedAt": "2024-01-01T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2024-01-29T00:00:00.000Z",
+    "versionId": "1"
+}

@@ -2,7 +2,7 @@
 SmartAttend Hub - Models Package
 """
 from app.models.user import (
-    User, UserCreate, UserUpdate, UserLogin, 
+    UserBase, UserCreate, UserUpdate, UserLogin, UserResponse,
     Token, TokenPayload, RefreshTokenRequest, PasswordChange
 )
 from app.models.hod import HOD, HODCreate, HODUpdate, HODDashboard
@@ -30,7 +30,7 @@ from app.models.notification import (
 
 __all__ = [
     # User
-    "User", "UserCreate", "UserUpdate", "UserLogin",
+    "UserBase", "UserCreate", "UserUpdate", "UserLogin", "UserResponse",
     "Token", "TokenPayload", "RefreshTokenRequest", "PasswordChange",
     # HOD
     "HOD", "HODCreate", "HODUpdate", "HODDashboard",
